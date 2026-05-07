@@ -23,6 +23,13 @@ multi-agent-kit/
 │   ├── orchestrator-subagent.md      # 串行编排（Claude Skill 用）
 │   └── orchestrator-teams.md         # 并行编排（Claude Skill 用）
 │
+├── skills/                           # 云社区 Skill 分发包（独立）
+│   └── multi-agent-init/             # Claude Code Skill
+│       ├── SKILL.md                  # Skill 入口定义
+│       ├── README.md                 # Skill 说明文档
+│       ├── LICENSE
+│       └── templates/                # Skill 专属模板（独立副本）
+│
 ├── src/                              # CLI 独立运行时
 │   ├── index.ts                      # CLI 入口
 │   ├── commands/                     # init / run / status
@@ -72,7 +79,19 @@ node /path/to/multi-agent-kit/dist/index.js status
 
 ### 方式二：Claude Code Skill
 
-适用于 Claude Code 用户，支持完整功能。
+适用于 Claude Code 用户，支持完整功能。可通过以下任一方式安装：
+
+**从云社区安装**（推荐）：
+
+直接从云社区搜索 `multi-agent-init` 一键安装。
+
+**从本项目安装**：
+
+```bash
+cp -r skills/multi-agent-init ~/.claude/skills/
+```
+
+或使用安装脚本：
 
 ```bash
 cd adapters/claude-code
