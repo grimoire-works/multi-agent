@@ -341,11 +341,14 @@ mkdir -p doc/design
 
 ### 何时使用编排模式
 
-**只有以下情况走编排流程**（读 `.claude/主智能体提示词.md`，按流程执行）：
-- 用户说"走编排流程"或"编排"
-- 用户说"开始执行"且 `doc/plan.md` 中有 ⏳ 任务
+**走编排流程的触发方式**（读 `.claude/主智能体提示词.md`，按流程执行）：
+- 用户说"走编排流程"/"编排"/"开始执行"且 `doc/plan.md` 中有 ⏳ 任务
+- 用户确认新功能/需求后（如"开始开发"、"方案OK，开始实施"等），**必须用 AskUserQuestion 询问**：
+  > 检测到新需求已确认，是否进入编排模式？
+  > - 是，走编排流程（委托子Agent开发+测试）
+  > - 否，直接处理
 
-**其他所有需求一律直接处理**，不启动编排。
+**其他日常对话和简单问题直接处理**，不启动编排。
 
 **核心规则**：主Agent只调度不干活，不直接编辑源代码文件。
 
@@ -381,6 +384,17 @@ mkdir -p doc/design
 ```
 
 如果 CLAUDE.md 不存在，先运行 `/init` 创建。
+
+### UI 开发规则（从 designer 模板提取）
+
+当满足以下任一条件时，从 `templates/designer-agent.md` 中提取 `<!-- CLAUDE.md-rules -->` 之后的「项目级 UI 规则」内容，追加到 CLAUDE.md 末尾：
+
+- 用户选了 designer 或 frontend Agent
+- 项目检测到前端文件（`.vue` / `.tsx` / `.jsx` / `.dart` / `.svelte` / `.html`）
+
+纯后端项目（无前端文件且未选前端相关 Agent）**不追加**。
+
+提取方式：读取 `templates/designer-agent.md`，找到 `<!-- CLAUDE.md-rules -->` 标记，取标记后面的 `## 项目级 UI 规则` 整段内容，追加到目标项目的 CLAUDE.md。
 
 ## Step 7：验证环境
 
