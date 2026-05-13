@@ -14,21 +14,22 @@
 
 ```
 multi-agent-kit/
-├── templates/                        # agent 模板（所有平台通用）
-│   ├── dev-agent.md                  # 核心开发工程师
-│   ├── tester-agent.md               # 质量测试工程师
-│   ├── frontend-agent.md             # 前端开发工程师
-│   ├── pm-agent.md                   # 产品经理
-│   ├── designer-agent.md             # UI 设计师
-│   ├── orchestrator-subagent.md      # 串行编排（Claude Skill 用）
-│   └── orchestrator-teams.md         # 并行编排（Claude Skill 用）
-│
-├── skills/                           # 云社区 Skill 分发包（独立）
+├── skills/                           # 云社区 Skill 分发包（唯一数据源）
 │   └── multi-agent-init/             # Claude Code Skill
 │       ├── SKILL.md                  # Skill 入口定义
 │       ├── README.md                 # Skill 说明文档
 │       ├── LICENSE
-│       └── templates/                # Skill 专属模板（独立副本）
+│       ├── templates/                # Agent 模板（CLI + Skill 共用）
+│       │   ├── dev-agent.md          # 核心开发工程师
+│       │   ├── tester-agent.md       # 质量测试工程师
+│       │   ├── frontend-agent.md     # 前端开发工程师
+│       │   ├── pm-agent.md           # 产品经理
+│       │   ├── designer-agent.md     # UI 设计师
+│       │   ├── orchestrator.md       # 串行编排
+│       │   └── orchestrator-teams.md # 并行编排
+│       └── references/               # 扩展参考文档
+│           ├── file-formats.md       # 文件格式定义
+│           └── claude-md-rules.md    # CLAUDE.md 追加规则
 │
 ├── src/                              # CLI 独立运行时
 │   ├── index.ts                      # CLI 入口
