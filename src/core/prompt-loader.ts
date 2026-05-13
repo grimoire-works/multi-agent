@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import type { ProjectConfig, Task, AgentRole } from '../types/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATES_DIR = path.resolve(__dirname, '../../templates');
+const TEMPLATES_DIR = path.resolve(__dirname, '../../skills/multi-agent-init/templates');
 
 /**
  * Agent prompt 文件名映射
