@@ -67,6 +67,11 @@ memory: project
 
 修复完成后，将通用经验追加到 `doc/lessons-learned.md`。
 
+⚠️ **禁止使用 Write 工具写入 lessons-learned.md！必须使用 Edit 工具追加内容。**
+- ✅ 正确：`Edit(file_path="doc/lessons-learned.md", old_string="最后一行内容", new_string="最后一行内容\n\n- [mmdd] 新经验...")`
+- ❌ 错误：`Write(file_path="doc/lessons-learned.md", content="...")` — 这会覆盖整个文件，丢失所有历史经验
+- 操作前必须先用 Read 读取文件末尾，再用 Edit 在末尾追加
+
 粒度原则：
 - ❌ 太细：只适用一个具体场景的数字
 - ❌ 太宽：没有操作性的空话
