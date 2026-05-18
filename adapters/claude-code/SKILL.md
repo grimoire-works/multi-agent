@@ -259,6 +259,13 @@ mkdir -p doc/design
 
 ## Step 5：创建配置和文档
 
+**读取 `references/file-formats.md`**，按其中的格式规范创建以下文件：
+
+- `.claude/settings.local.json` — 权限配置
+- `doc/plan.md` — 空模板（仅 Task 0）
+- `doc/lessons-learned.md` — 空文件
+- `doc/main-log.md` — 启动日志
+
 ### 增量模式
 
 - `settings.local.json`：合并 permissions.allow 数组（不覆盖已有条目）
@@ -266,71 +273,9 @@ mkdir -p doc/design
 - `doc/lessons-learned.md`：**不覆盖**（已有经验记录）
 - `doc/main-log.md`：**追加**一行日志，如 `- {yymmdd hhmm} 增量添加 Agent: {新增列表}`
 
-### 全新模式
-
-### .claude/settings.local.json
-
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash({构建命令}:*)",
-      "Bash({测试命令}:*)",
-      "Bash({依赖安装命令}:*)",
-      "Bash(find ~/.claude/projects/:*)",
-      "Bash(mkdir -p:*)"
-    ]
-  }
-}
-```
-
-### doc/plan.md
-
-扫描现有代码结构，建议合理的任务拆分（每个任务 100-300 行）。**每个任务必须定义 3-5 条可执行的验收标准**，格式为"操作 → 期望结果"（如"POST /api/register 合法参数 → 返回 201"）。格式：
-
-```markdown
-# 开发计划 — {项目名称}
-
-## 项目概述
-{一句话描述}
-
-## 任务列表
-| # | 任务 | 状态 | DEV_ID | TEST_ID | 涉及文件 | 验收标准 | 备注 |
-|---|------|------|--------|---------|----------|----------|------|
-| 0 | 环境验证 + 编译检查 | ⏳ 待办 | - | - | - | 构建命令零错误 | 主Agent直接做 |
-| 1 | {任务1} | ⏳ 待办 | - | - | {文件路径} | 见 AC-1 | |
-| ... | ... | ... | ... | ... | ... | ... | ... |
-
-## 验收标准
-
-### AC-1: {任务1标题}
-1. {操作描述} → {期望结果}
-2. {操作描述} → {期望结果}
-3. {操作描述} → {期望结果}
-
-### AC-2: {任务2标题}
-1. {操作描述} → {期望结果}
-2. {操作描述} → {期望结果}
-3. {操作描述} → {期望结果}
-
-## 当前进度
-- 正在执行：尚未开始
-- 已完成：0/{N}
-```
-
-**注意**：
-- "涉及文件"列必须填写，用于 Wave 分组时的文件冲突检测。格式为逗号分隔的文件路径（如 `lib/core/audio/pitch.dart, lib/core/models/note.dart`）。
-- "验收标准"列填写"见 AC-N"并在下方 AC 段落中定义具体标准。每条标准必须可执行、可验证（如"POST /api/register 合法参数 → 返回 201"）。
-
-### doc/lessons-learned.md
-
-空文件，只写标题：`# 经验教训库`
-
-### doc/main-log.md
-
-写入：`- {yymmdd hhmm} 项目启动，{项目名称}`
-
 ## Step 6：更新 CLAUDE.md
+
+**读取 `references/claude-md-rules.md`**，按其中的规则将「多智能体工作流」章节追加或替换到目标项目的 CLAUDE.md。
 
 ### 增量模式
 
@@ -339,56 +284,6 @@ mkdir -p doc/design
 ### 全新模式
 
 在 CLAUDE.md 末尾追加。
-
-### 追加内容格式（两种模式共用）
-
-```markdown
-## 多智能体工作流
-
-本项目使用**主智能体编排 + 子Agent分工**的工作模式。
-
-### 何时使用编排模式
-
-**只有以下情况走编排流程**（读 `.claude/主智能体提示词.md`，按流程执行）：
-- 用户说"走编排流程"或"编排"
-- 用户说"开始执行"且 `doc/plan.md` 中有 ⏳ 任务
-
-**其他所有需求一律直接处理**，不启动编排。
-
-**核心规则**：主Agent只调度不干活，不直接编辑源代码文件。
-
-### 执行模式
-
-- **Subagent 串行模式**（默认）：适合 ≤10 个任务，稳定可控
-  - 提示词：`.claude/主智能体提示词.md`
-- **Agent Teams 并行模式**：适合 >10 个任务，需要启用实验性功能
-  - 提示词：`.claude/主智能体提示词-teams.md`
-  - 启用方式：在 `~/.claude/settings.json` 添加 `{"env":{"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS":"1"}}`
-
-说"走编排流程"时，会根据任务数自动建议执行模式。
-```
-
-然后根据所有 Agent（已有 + 新增），追加对应的 Agent 行：
-
-```
-{如果有 pm}       → - 需求规划 → 委托 `{代号}-pm` 子Agent
-{如果有 designer}  → - UI 设计 → 委托 `{代号}-designer` 子Agent
-{如果有 frontend} → - 前端开发 → 委托 `{代号}-frontend` 子Agent
-{如果有 dev}      → - 核心开发 → 委托 `{代号}-dev` 子Agent
-{如果有 tester}   → - 测试审查 → 委托 `{代号}-tester` 子Agent
-```
-
-公共文档行（始终包含）：
-```
-- 任务计划 → `doc/plan.md`（主Agent管理）
-- 经验库 → `doc/lessons-learned.md`（开发Agent追加）
-- 协调日志 → `doc/main-log.md`（主Agent编写）
-{如果有 tester}    → - 测试报告 → `doc/test-reports/`（测试Agent写入）
-{如果有 pm}       → - PRD 文档 → `doc/prd.md`（PM Agent写入）
-{如果有 designer}  → - 设计方案 → `doc/design/`（designer Agent写入）
-```
-
-如果 CLAUDE.md 不存在，先运行 `/init` 创建。
 
 ## Step 7：验证环境
 
@@ -402,8 +297,10 @@ mkdir -p doc/design
 
 项目：{名称} ({语言} + {框架})
 已选Agent：{列出用户选择的Agent，如 tuner-dev / tuner-tester}
-任务数：{N} 个（见 doc/plan.md）
 执行模式：Subagent 串行（默认） / Agent Teams 并行（见 .claude/主智能体提示词-teams.md）
+
+任务数：待定（提需求后写入 doc/plan.md）
+说"走编排流程"即可启动开发。
 
 说"走编排流程"即可启动开发。
 ```
