@@ -26,17 +26,18 @@
 
 如果用户选择了"完整流程"或"PM 规划"，先执行上游工作（由 Team Lead 协调，不委托 Teammate）：
 
-**完整流程**（需有 PM + Designer Agent）：
+**完整流程**（需有 PM + Designer + Dev Agent）：
 1. 启动 PM Teammate，分析需求，**追问边界条件直到用户确认所有细节**
 2. 追问完成后，PM 输出 PRD 到 `doc/prd.md`
-3. 启动 Designer Teammate，根据 PRD 出设计稿到 `doc/design/`
-4. 将设计稿展示给用户确认，追问直到用户满意
-5. 启动 PM Teammate，根据确认后的 PRD + 设计稿拆解任务，写入 `doc/plan.md`
+3. 启动 Designer Teammate，根据 PRD 出设计稿到 `doc/design/`，展示给用户确认
+4. 启动 Dev Teammate，根据 PRD + 设计稿出技术方案（涉及模块、技术选型、数据流、影响范围、风险点），写入 `doc/tech-plan.md`，展示给用户确认
+5. 启动 PM Teammate，根据确认后的 PRD + 设计稿 + 技术方案拆解任务，写入 `doc/plan.md`
 
-**PM 规划**（需有 PM Agent）：
+**PM 规划**（需有 PM + Dev Agent）：
 1. 启动 PM Teammate，分析需求，**追问边界条件直到用户确认所有细节**
 2. 追问完成后，PM 输出 PRD 到 `doc/prd.md`
-3. 启动 PM Teammate，根据确认后的 PRD 拆解任务，写入 `doc/plan.md`
+3. 启动 Dev Teammate，根据 PRD 出技术方案，写入 `doc/tech-plan.md`，展示给用户确认
+4. 启动 PM Teammate，根据确认后的 PRD + 技术方案拆解任务，写入 `doc/plan.md`
 
 **直接开发**：跳过上游，plan.md 已有任务或用户手动填写。
 

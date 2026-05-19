@@ -6,28 +6,30 @@ set -e
 
 SKILL_DIR="$HOME/.claude/skills/multi-agent-init"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROMPTS_DIR="$SCRIPT_DIR/../../templates"
+SOURCE_DIR="$SCRIPT_DIR/../../skills/multi-agent-init"
 
 echo "安装 multi-agent-kit (Claude Code 适配器)..."
 
-# 创建 skill 目录
+# 创建 skill 目录结构
 mkdir -p "$SKILL_DIR/templates"
+mkdir -p "$SKILL_DIR/references"
 
 # 复制 SKILL.md
-cp "$SCRIPT_DIR/SKILL.md" "$SKILL_DIR/SKILL.md"
+cp "$SOURCE_DIR/SKILL.md" "$SKILL_DIR/SKILL.md"
 echo "  ✓ SKILL.md"
 
-# 复制 prompt 模板到 templates/（Claude Code skill 要求 templates/ 目录）
-for file in "$PROMPTS_DIR"/*.md; do
+# 复制 prompt 模板
+for file in "$SOURCE_DIR/templates"/*.md; do
   filename=$(basename "$file")
-  # 映射文件名：orchestrator-subagent.md → orchestrator.md
-  if [ "$filename" = "orchestrator-subagent.md" ]; then
-    cp "$file" "$SKILL_DIR/templates/orchestrator.md"
-    echo "  ✓ orchestrator.md"
-  else
-    cp "$file" "$SKILL_DIR/templates/$filename"
-    echo "  ✓ $filename"
-  fi
+  cp "$file" "$SKILL_DIR/templates/$filename"
+  echo "  ✓ templates/$filename"
+done
+
+# 复制 references
+for file in "$SOURCE_DIR/references"/*.md; do
+  filename=$(basename "$file")
+  cp "$file" "$SKILL_DIR/references/$filename"
+  echo "  ✓ references/$filename"
 done
 
 echo ""
