@@ -14,34 +14,38 @@
 
 ```
 multi-agent-kit/
-├── skills/                           # 云社区 Skill 分发包（唯一数据源）
-│   └── multi-agent-init/             # Claude Code Skill
-│       ├── SKILL.md                  # Skill 入口定义
-│       ├── README.md                 # Skill 说明文档
-│       ├── LICENSE
-│       ├── templates/                # Agent 模板（CLI + Skill 共用）
-│       │   ├── dev-agent.md          # 核心开发工程师
-│       │   ├── tester-agent.md       # 质量测试工程师
-│       │   ├── frontend-agent.md     # 前端开发工程师
-│       │   ├── pm-agent.md           # 产品经理
-│       │   ├── designer-agent.md     # UI 设计师
-│       │   ├── orchestrator.md       # 串行编排
-│       │   └── orchestrator-teams.md # 并行编排
-│       └── references/               # 扩展参考文档
-│           ├── file-formats.md       # 文件格式定义
-│           └── claude-md-rules.md    # CLAUDE.md 追加规则
+├── skills/                                # Skill 集合（按功能域分类）
+│   ├── CONTEXT.md                         # 共享领域语言
+│   ├── orchestration/                     # 编排类
+│   │   └── multi-agent-init/              # 多智能体初始化 Skill
+│   │       ├── SKILL.md                   # Skill 入口定义
+│   │       ├── templates/                 # Agent 模板（CLI + Skill 共用）
+│   │       │   ├── dev-agent.md
+│   │       │   ├── tester-agent.md
+│   │       │   ├── frontend-agent.md
+│   │       │   ├── pm-agent.md
+│   │       │   ├── designer-agent.md
+│   │       │   ├── orchestrator.md
+│   │       │   └── orchestrator-teams.md
+│   │       └── references/               # 扩展参考文档
+│   ├── engineering/                       # 工程类
+│   │   └── diagnose/                      # 纪律性调试 Skill
+│   │       └── SKILL.md
+│   └── productivity/                      # 生产力类
+│       └── grill/                         # 诘问式对话 Skill
+│           └── SKILL.md
 │
-├── src/                              # CLI 独立运行时
-│   ├── index.ts                      # CLI 入口
-│   ├── commands/                     # init / run / status
-│   ├── core/                         # 编排器 + 状态管理 + Agent 会话
-│   └── types/                        # 类型定义
+├── src/                                   # CLI 独立运行时
+│   ├── index.ts
+│   ├── commands/
+│   ├── core/
+│   └── types/
 │
-├── adapters/                         # 各平台适配层
-│   ├── claude-code/                  # Claude Code（完整支持）
-│   ├── cursor/                       # Cursor（手动模式）
-│   ├── trae/                         # Trae（手动模式）
-│   └── codex/                        # Codex（手动模式）
+├── adapters/                              # 各平台适配层
+│   ├── claude-code/
+│   ├── cursor/
+│   ├── trae/
+│   └── codex/
 │
 ├── package.json
 ├── tsconfig.json
@@ -89,7 +93,7 @@ node /path/to/multi-agent-kit/dist/index.js status
 **从本项目安装**：
 
 ```bash
-cp -r skills/multi-agent-init ~/.claude/skills/
+cp -r skills/orchestration/multi-agent-init ~/.claude/skills/multi-agent-init
 ```
 
 或使用安装脚本：

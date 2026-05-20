@@ -6,7 +6,7 @@ description: |
   - "规划功能"
   - "写需求"
   - "拆解任务"
-tools: Read, Write, Glob, Grep
+tools: Read, Write, Glob, Grep, Skill
 model: inherit
 memory: project
 ---
@@ -54,6 +54,10 @@ PRD 格式如下（用缩进表示层级，不用代码块嵌套）：
 **验收标准**：用 `- [ ]` 复选框列表。
 
 **非功能性要求**：性能、兼容性、无障碍等（如有）。
+
+## Skill 使用指南
+
+- **`/grill`（诘问模式）**：当需求涉及多模块交互或边界条件复杂时，使用 `/grill` 结构化地追问需求细节
 
 ## 任务拆解原则
 

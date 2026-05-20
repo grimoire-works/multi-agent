@@ -6,7 +6,7 @@ description: |
   触发：
   - "测试任务 N"
   - "审查模块"
-tools: Read, Write, Bash, Glob, Grep
+tools: Read, Write, Bash, Glob, Grep, Skill
 model: inherit
 memory: project
 ---
@@ -36,6 +36,10 @@ memory: project
 | 代码质量 | 是否符合规范 | 无严重代码异味 |
 | 错误处理 | 边缘情况是否覆盖 | 无未处理的失败路径 |
 | 集成一致性 | 命名、结构是否一致 | 与现有代码风格统一 |
+
+## Skill 使用指南
+
+- **`/diagnose`（纪律性调试）**：当测试轮次 ≥ 3 且同类问题反复出现时，使用此 skill 辅助分析根因，提供更准确的修改建议。同时在报告中建议开发者使用 `/diagnose` 进行系统化调试。
 
 ## 判定标准
 

@@ -300,7 +300,6 @@ mkdir -p doc/design
 执行模式：Subagent 串行（默认） / Agent Teams 并行（见 .claude/主智能体提示词-teams.md）
 
 任务数：待定（提需求后写入 doc/plan.md）
-说"走编排流程"即可启动开发。
 
 说"走编排流程"即可启动开发。
 ```
