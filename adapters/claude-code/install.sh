@@ -6,7 +6,7 @@ set -e
 
 SKILL_DIR="$HOME/.claude/skills/multi-agent-init"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SOURCE_DIR="$SCRIPT_DIR/../../skills/multi-agent-init"
+SOURCE_DIR="$SCRIPT_DIR/../../skills/orchestration/multi-agent-init"
 
 echo "安装 multi-agent-kit (Claude Code 适配器)..."
 
