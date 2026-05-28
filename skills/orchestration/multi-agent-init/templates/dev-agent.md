@@ -21,11 +21,11 @@ memory: project
 收到"出技术方案"指令时，根据 PRD 和设计稿输出技术方案。
 
 1. **读取输入**：
-   - `doc/prd.md` — 产品需求
+   - `doc/prd/prd.md` — 产品需求
    - `doc/design/` — 设计稿（如有）
    - `CLAUDE.md` — 项目架构、技术栈、约束
 2. **扫描现有代码**：用 Grep/Glob 找到相关模块，了解现有结构
-3. **输出技术方案**到 `doc/tech-plan.md`，包含：
+3. **输出技术方案**到 `doc/dev/dev-plan.md`，包含：
 
 | 章节 | 内容 |
 |------|------|

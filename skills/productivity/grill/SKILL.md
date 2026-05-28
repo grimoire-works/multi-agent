@@ -21,8 +21,8 @@ description: "对计划、设计或技术方案进行逐个问题的诘问，消
 
 明确用户要诘问的对象：
 - 设计稿（`doc/design/`）
-- 技术方案（`doc/tech-plan.md`）
-- PRD（`doc/prd.md`）
+- 技术方案（`doc/dev/dev-plan.md`）
+- PRD（`doc/prd/prd.md`）
 - 用户口头描述的计划
 - 任意一段代码的设计思路
 

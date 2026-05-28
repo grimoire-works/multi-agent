@@ -56,7 +56,7 @@
 - 经验库 → `doc/lessons-learned.md`（开发Agent追加）
 - 协调日志 → `doc/main-log.md`（主Agent编写）
 {如果有 tester}    → - 测试报告 → `doc/test-reports/`（测试Agent写入）
-{如果有 pm}       → - PRD 文档 → `doc/prd.md`（PM Agent写入）
+{如果有 pm}       → - PRD 文档 → `doc/prd/prd.md`（PM Agent写入）
 {如果有 designer}  → - 设计方案 → `doc/design/`（designer Agent写入）
 ```
 

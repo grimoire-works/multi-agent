@@ -17,8 +17,8 @@
 | 文件 | 职责 | 谁写入 |
 |------|------|--------|
 | `doc/plan.md` | 任务列表 + 验收标准 + 进度 | 编排者管理，PM 可写入 |
-| `doc/prd.md` | 产品需求文档 | PM Agent |
-| `doc/tech-plan.md` | 技术方案 | dev Agent |
+| `doc/prd/prd.md` | 产品需求文档 | PM Agent |
+| `doc/dev/dev-plan.md` | 技术方案 | dev Agent |
 | `doc/lessons-learned.md` | 经验教训库 | dev / frontend Agent 修正后追加 |
 | `doc/handoff.md` | 编排交接文档 | 编排者在中断时生成 |
 | `doc/main-log.md` | 编排日志 | 编排者 |
