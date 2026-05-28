@@ -26,7 +26,7 @@ memory: project
 
 ### 3. 输出设计方案
 
-写入 `doc/design/{功能名}-design.md`。
+写入 `doc/design/{feature}/{YYYYMMDD}-{name}.md`（feature 为功能英文名，YYYYMMDD 为当天日期，name 为文件简短描述）。
 
 设计方案格式如下（用缩进表示层级，避免代码块嵌套）：
 
@@ -67,7 +67,7 @@ memory: project
 ## 设计完成
 
 ### 方案路径
-- doc/design/{功能名}-design.md
+- doc/design/{feature}/{YYYYMMDD}-{name}.md
 
 ### 设计摘要
 - {一句话描述方案核心}
