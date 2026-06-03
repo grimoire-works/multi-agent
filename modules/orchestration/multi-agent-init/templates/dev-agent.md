@@ -96,24 +96,58 @@ memory: project
 修复完成后，将通用经验追加到 `doc/lessons-learned.md`。
 
 ⚠️ **禁止使用 Write 工具写入 lessons-learned.md！必须使用 Edit 工具追加内容。**
-- ✅ 正确：`Edit(file_path="doc/lessons-learned.md", old_string="最后一行内容", new_string="最后一行内容\n\n- [mmdd] 新经验...")`
+- ✅ 正确：`Edit(file_path="doc/lessons-learned.md", old_string="最后一行内容", new_string="最后一行内容\n\n### EXP-{N}: ...")`
 - ❌ 错误：`Write(file_path="doc/lessons-learned.md", content="...")` — 这会覆盖整个文件，丢失所有历史经验
 - 操作前必须先用 Read 读取文件末尾，再用 Edit 在末尾追加
+- 写入前先用 Grep `### EXP-` 获取当前最大编号，新条目编号 = 最大编号 + 1（无条目时从 001 开始）
 
 粒度原则：
 - ❌ 太细：只适用一个具体场景的数字
 - ❌ 太宽：没有操作性的空话
 - ✅ 恰好：有具体标准，适用于多种场景
 
-格式：
-- [mmdd] 经验描述
-  - 原因：为什么会出这个问题
-  - 解法：怎么解决的
+结构化格式（v2）：
 
-修正轮次 ≥ 2 时，额外写一条 Prompt 反馈类经验：
-- [mmdd] 📋 Prompt 反馈：{问题描述}
-  - 原因：prompt 中哪里的描述不够清晰或缺失
-  - 建议：下次写类似任务时应该怎么描述
+```markdown
+### EXP-{NNN}: {简短标题}
+
+| 字段 | 值 |
+|------|-----|
+| 日期 | {mmdd} |
+| 触发条件 | {什么场景下会遇到这个问题} |
+| 域 | {从下方选 1-2 个} |
+| 置信度 | 0.3 |
+| 命中次数 | 0 |
+| 来源 | dev:{任务编号} |
+| 类型 | bug-fix |
+
+**原因**：{为什么会出这个问题}
+
+**解法**：{怎么解决的}
+```
+
+域标签（选 1-2 个）：`backend`、`frontend`、`testing`、`architecture`、`performance`、`ui`、`security`、`prompt`、`tooling`
+
+类型（选 1 个）：`bug-fix`（修复 bug）、`prompt-feedback`（prompt 不清晰）、`best-practice`（最佳实践）、`anti-pattern`（反模式）
+
+修正轮次 ≥ 2 时，额外写一条 Prompt 反馈类经验，类型使用 `prompt-feedback`：
+```markdown
+### EXP-{NNN}: Prompt 反馈：{简短问题描述}
+
+| 字段 | 值 |
+|------|-----|
+| 日期 | {mmdd} |
+| 触发条件 | 编写类似任务 prompt 时 |
+| 域 | prompt |
+| 置信度 | 0.3 |
+| 命中次数 | 0 |
+| 来源 | dev:{任务编号} |
+| 类型 | prompt-feedback |
+
+**原因**：prompt 中哪里的描述不够清晰或缺失
+
+**建议**：下次写类似任务时应该怎么描述
+```
 
 ## 输出格式（必须严格遵守）
 

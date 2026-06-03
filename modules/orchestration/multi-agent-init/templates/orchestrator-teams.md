@@ -128,10 +128,24 @@ pending_tests = []  // 队列：[(wave号, [任务列表])]
   日志：Wave {N} 开始，包含任务 {list}
   向用户报告
 
-  // Step 2.5: 注入经验教训（如果 lessons-learned.md 非空）
-  Grep(pattern="^- \\[", path="doc/lessons-learned.md", head_limit=5)
-  // 如果有匹配结果 → 拼入 Teammate prompt 作为"近期项目经验"
-  // 如果无匹配结果（文件为空） → 跳过注入，不拼入该段落
+  // Step 2.5: 注入经验教训（分级策略）
+  // 1. 检查项目规则文件
+  Glob(pattern=".claude/rules/*.md")
+  // 有 → 读取每个规则文件，作为"必须遵守的项目规则"段落注入
+
+  // 2. 注入 lessons-learned 中与当前 Wave 任务相关的结构化经验
+  Grep(pattern="### EXP-", path="doc/lessons-learned.md")  // 获取所有结构化条目
+  Grep(pattern="{Wave 任务关键词}", path="doc/lessons-learned.md")  // 关键词匹配
+  // 兼容旧格式：如无结构化条目，回退 Grep(pattern="^- \\[", path="doc/lessons-learned.md", head_limit=5)
+
+  // 注入分层标注：
+  // "必须遵守的项目规则：" {规则内容}
+  // "强烈建议参考的经验：" {置信度 ≥ 0.7 的条目}
+  // "相关历史经验：" {关键词匹配的条目}
+
+  // 3. 记录注入日志（供 /learn skill 统计命中次数）
+  // 日志格式：- {yymmdd hhmm} 注入经验：EXP-{NNN}, EXP-{NNN}, ...（Wave {N}）
+  // 不直接编辑 lessons-learned.md，命中次数由 /learn skill 从日志统计
 
   // Step 3: 启动 Wave N 开发（后台）
   启动 Teammate（后台模式，含近期经验注入），各自领取任务
@@ -163,9 +177,8 @@ pending_tests = []  // 队列：[(wave号, [任务列表])]
 ### Wave 开发启动
 
 ```
-// 注入经验教训（每个 Wave 开发前必须执行）
-// 如果 lessons-learned.md 为空则跳过，不拼入该段落
-Grep(pattern="^- \\[", path="doc/lessons-learned.md", head_limit=5)
+// 注入经验教训（每个 Wave 开发前必须执行，分级策略见 Step 2.5）
+// 如果 lessons-learned.md 为空且无项目规则则跳过，不拼入该段落
 
 Agent(
   subagent_type: "{代号}-dev",
@@ -176,8 +189,14 @@ Agent(
   dev-plan: doc/plan.md
   项目架构: CLAUDE.md
 
-  近期项目经验（开发时请注意避免）：
-  {Grep 结果，逐条列出}
+  {如存在项目规则}必须遵守的项目规则：
+  {Glob 到的 .claude/rules/ 内容摘要}
+
+  {如存在高置信度经验}强烈建议参考的经验：
+  {置信度 ≥ 0.7 的 EXP 条目摘要}
+
+  {如存在关键词匹配经验}相关历史经验：
+  {Grep 到的 lessons-learned 相关内容}
 
   完成每个任务后输出文件路径，等待下一个任务。
   请按开发模式工作流程执行。"
@@ -211,7 +230,10 @@ Agent Teams **不支持 resume**。修正时：
 
 1. 从测试报告中提取 FAIL 的任务和问题（用 Grep）
 2. 暂停流水线，进入前台修正
-3. 注入相关经验教训（如果 lessons-learned.md 非空）：`Grep(pattern="{任务关键词}", path="doc/lessons-learned.md")`，无匹配则跳过
+3. 注入相关经验教训（分级策略）：
+   - `Glob(pattern=".claude/rules/*.md")` 检查项目规则
+   - `Grep(pattern="{任务关键词}", path="doc/lessons-learned.md")` 关键词匹配
+   - 无匹配且无项目规则则跳过
 4. 启动新的 Teammate 处理修正（传入测试报告路径 + 相关经验）
 5. 修正完成后重新测试该任务
 6. 修正通过后恢复流水线
@@ -222,6 +244,9 @@ Agent(
   mode: "bypassPermissions",
   prompt: "修正任务：任务 {N} - {标题}
   测试报告：doc/test-reports/task{N}-report.md
+
+  {如存在项目规则}项目规则（必须遵守）：
+  {规则内容}
 
   历史经验提示（请优先关注）：
   {Grep 到的 lessons-learned 相关内容}

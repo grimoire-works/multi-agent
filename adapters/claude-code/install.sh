@@ -6,7 +6,7 @@ set -e
 
 SKILL_DIR="$HOME/.claude/skills/multi-agent-init"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SOURCE_DIR="$SCRIPT_DIR/../../skills/orchestration/multi-agent-init"
+SOURCE_DIR="$SCRIPT_DIR/../../modules/orchestration/multi-agent-init"
 
 echo "安装 multi-agent-kit (Claude Code 适配器)..."
 
@@ -31,6 +31,18 @@ for file in "$SOURCE_DIR/references"/*.md; do
   cp "$file" "$SKILL_DIR/references/$filename"
   echo "  ✓ references/$filename"
 done
+
+# 复制 learn skill
+LEARN_SOURCE_DIR="$SCRIPT_DIR/../../modules/productivity/learn"
+LEARN_DIR="$HOME/.claude/skills/learn"
+if [ -d "$LEARN_SOURCE_DIR" ]; then
+  mkdir -p "$LEARN_DIR"
+  for file in "$LEARN_SOURCE_DIR"/*.md; do
+    filename=$(basename "$file")
+    cp "$file" "$LEARN_DIR/$filename"
+  done
+  echo "  ✓ learn skill"
+fi
 
 echo ""
 echo "安装完成！在 Claude Code 中说「初始化多智能体」或运行 /multi-agent-init 即可使用。"
