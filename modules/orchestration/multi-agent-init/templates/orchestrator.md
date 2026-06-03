@@ -158,10 +158,24 @@ pending_tests = []  // 队列：[(task号, DEV_ID, TEST_ID)]
       FAIL → 暂停流水线，进入修正循环（前台，用 dev_id / test_id resume）
       PASS → 更新 plan.md 标记 ✅ → 向用户报告
 
-  // Step 1.5: 注入经验教训（如果 lessons-learned.md 非空）
-  Grep(pattern="^- \\[", path="doc/lessons-learned.md", head_limit=5)
-  // 如果有匹配结果 → 拼入 dev Agent prompt 作为"近期项目经验"
-  // 如果无匹配结果（文件为空） → 跳过注入，不拼入该段落
+  // Step 1.5: 注入经验教训（分级策略）
+  // 1. 检查项目规则文件
+  Glob(pattern=".claude/rules/*.md")
+  // 有 → 读取每个规则文件，作为"必须遵守的项目规则"段落注入
+
+  // 2. 注入 lessons-learned 中与当前任务相关的结构化经验
+  Grep(pattern="### EXP-", path="doc/lessons-learned.md")  // 获取所有结构化条目
+  Grep(pattern="{任务关键词}", path="doc/lessons-learned.md")  // 关键词匹配
+  // 兼容旧格式：如无结构化条目，回退 Grep(pattern="^- \\[", path="doc/lessons-learned.md", head_limit=5)
+
+  // 注入分层标注：
+  // "必须遵守的项目规则：" {规则内容}
+  // "强烈建议参考的经验：" {置信度 ≥ 0.7 的条目}
+  // "相关历史经验：" {关键词匹配的条目}
+
+  // 3. 记录注入日志（供 /learn skill 统计命中次数）
+  // 日志格式：- {yymmdd hhmm} 注入经验：EXP-{NNN}, EXP-{NNN}, ...（任务 {N}）
+  // 不直接编辑 lessons-learned.md，命中次数由 /learn skill 从日志统计
 
   // Step 2: 启动开发
   启动 dev Agent（含近期经验注入） → 等待完成 → 提取 DEV_ID
@@ -203,9 +217,8 @@ Grep(pattern="^### 判定", path="doc/test-reports/task{上一个任务号}-repo
 ```
 日志：- {yymmdd hhmm} 启动开发：任务 {N} ({标题})
 
-// 注入经验教训（每个任务开发前必须执行）
-// 如果 lessons-learned.md 为空则跳过，不拼入该段落
-Grep(pattern="^- \\[", path="doc/lessons-learned.md", head_limit=5)
+// 注入经验教训（每个任务开发前必须执行，分级策略见 Step 1.5）
+// 如果 lessons-learned.md 为空且无项目规则则跳过，不拼入该段落
 
 Agent(
   subagent_type: "{代号}-dev",
@@ -215,8 +228,14 @@ Agent(
   dev-plan: doc/plan.md
   项目架构: CLAUDE.md
 
-  近期项目经验（开发时请注意避免）：
-  {Grep 结果，逐条列出}
+  {如存在项目规则}必须遵守的项目规则：
+  {Glob 到的 .claude/rules/ 内容摘要}
+
+  {如存在高置信度经验}强烈建议参考的经验：
+  {置信度 ≥ 0.7 的 EXP 条目摘要}
+
+  {如存在关键词匹配经验}相关历史经验：
+  {Grep 到的 lessons-learned 相关内容}
 
   请按开发模式工作流程执行。"
 )
@@ -300,9 +319,11 @@ while round < 3:
   # 收集 FAIL 的测试报告路径
   report_path = "doc/test-reports/task{N}-report.md"
 
-  # 注入相关经验教训（如果 lessons-learned.md 非空）
+  # 注入相关经验教训（分级策略）
   Grep(pattern="{任务关键词}", path="doc/lessons-learned.md")
-  # 如果无匹配结果 → 跳过注入，不拼入"历史经验提示"段落
+  # 同时检查项目规则
+  Glob(pattern=".claude/rules/*.md")
+  # 如果无匹配结果且无项目规则 → 跳过注入，不拼入"历史经验提示"段落
 
   # resume 开发Agent，传入报告路径让它自己读
   Agent(
@@ -311,6 +332,9 @@ while round < 3:
     mode: "bypassPermissions",
     prompt: "测试反馈如下，请读取报告并修正：
     测试报告：{report_path}
+
+    {如存在项目规则}项目规则（必须遵守）：
+    {规则内容}
 
     历史经验提示（请优先关注）：
     {Grep 到的 lessons-learned 相关内容}

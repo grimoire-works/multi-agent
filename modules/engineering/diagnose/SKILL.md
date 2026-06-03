@@ -117,6 +117,34 @@ description: "纪律性调试循环，用于解决复杂 bug 和性能问题。�
 
 **然后问：什么能防止这个 bug 再次发生？** 如果答案涉及架构变更，记录建议。
 
+### 经验写入（如果项目使用 lessons-learned）
+
+如果 `doc/lessons-learned.md` 存在，在清理完成后追加一条结构化经验：
+
+```markdown
+### EXP-{NNN}: {bug 简短标题}
+
+| 字段 | 值 |
+|------|-----|
+| 日期 | {mmdd} |
+| 触发条件 | {什么情况下会出现这个 bug 的根因} |
+| 域 | {从下方选 1-2 个} |
+| 置信度 | 0.5 |
+| 命中次数 | 0 |
+| 来源 | diagnose:{bug 描述摘要} |
+| 类型 | bug-fix |
+
+**原因**：{Phase 3 中验证通过的假设}
+
+**解法**：{Phase 5 中的修复方案}
+```
+
+diagnose 产出的经验起始置信度为 0.5（高于默认 0.3），因为已经过系统化假设验证。
+
+域标签（选 1-2 个）：`backend`、`frontend`、`testing`、`architecture`、`performance`、`ui`、`security`、`prompt`、`tooling`
+
+写入前先用 Grep `### EXP-` 获取最大编号，新条目编号自增。⚠️ 使用 Edit 工具追加，禁止 Write 覆盖。
+
 ## 与 tester Agent 的区别
 
 | | tester Agent | diagnose Skill |

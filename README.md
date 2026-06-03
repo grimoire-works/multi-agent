@@ -14,11 +14,11 @@
 
 ```
 multi-agent-kit/
-├── skills/                                # Skill 集合（按功能域分类）
+├── modules/                               # 能力模块（按功能域分类）
 │   ├── CONTEXT.md                         # 共享领域语言
 │   ├── orchestration/                     # 编排类
-│   │   └── multi-agent-init/              # 多智能体初始化 Skill
-│   │       ├── SKILL.md                   # Skill 入口定义
+│   │   └── multi-agent-init/              # 多智能体初始化模块
+│   │       ├── SKILL.md                   # 模块入口定义
 │   │       ├── templates/                 # Agent 模板（CLI + Skill 共用）
 │   │       │   ├── dev-agent.md
 │   │       │   ├── tester-agent.md
@@ -29,10 +29,12 @@ multi-agent-kit/
 │   │       │   └── orchestrator-teams.md
 │   │       └── references/               # 扩展参考文档
 │   ├── engineering/                       # 工程类
-│   │   └── diagnose/                      # 纪律性调试 Skill
+│   │   └── diagnose/                      # 纪律性调试模块
 │   │       └── SKILL.md
 │   └── productivity/                      # 生产力类
-│       └── grill/                         # 诘问式对话 Skill
+│       ├── grill/                         # 诘问式对话模块
+│       │   └── SKILL.md
+│       └── learn/                         # 经验复盘模块
 │           └── SKILL.md
 │
 ├── src/                                   # CLI 独立运行时
@@ -93,7 +95,7 @@ node /path/to/multi-agent-kit/dist/index.js status
 **从本项目安装**：
 
 ```bash
-cp -r skills/orchestration/multi-agent-init ~/.claude/skills/multi-agent-init
+cp -r modules/orchestration/multi-agent-init ~/.claude/skills/multi-agent-init
 ```
 
 或使用安装脚本：
