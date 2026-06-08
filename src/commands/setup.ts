@@ -140,12 +140,12 @@ export async function askSetup(
 // ── 辅助 ──
 
 function findTemplatesDir(): string | null {
-  // 相对于 dist/ 目录向上查找 skills/multi-agent-init/templates/
-  // dist/commands/setup.js → ../../skills/multi-agent-init/templates/
+  // 相对于 dist/ 目录向上查找 modules/orchestration/multi-agent-init/templates/
+  // dist/commands/setup.js → ../../modules/orchestration/multi-agent-init/templates/
   const possiblePaths = [
-    path.resolve(process.argv[1] ?? __dirname, '..', '..', 'skills', 'orchestration', 'multi-agent-init', 'templates'),
-    path.resolve(process.cwd(), 'skills', 'orchestration', 'multi-agent-init', 'templates'),
-    path.resolve(__dirname, '..', '..', 'skills', 'orchestration', 'multi-agent-init', 'templates'),
+    path.resolve(process.argv[1] ?? __dirname, '..', '..', 'modules', 'orchestration', 'multi-agent-init', 'templates'),
+    path.resolve(process.cwd(), 'modules', 'orchestration', 'multi-agent-init', 'templates'),
+    path.resolve(__dirname, '..', '..', 'modules', 'orchestration', 'multi-agent-init', 'templates'),
   ];
 
   for (const p of possiblePaths) {
