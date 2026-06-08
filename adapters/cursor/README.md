@@ -11,8 +11,8 @@
 mkdir -p .cursor/rules
 
 # 2. 选择你需要的 agent，复制并重命名为 .mdc
-cp ../../templates/dev-agent.md .cursor/rules/dev-agent.mdc
-cp ../../templates/tester-agent.md .cursor/rules/tester-agent.mdc
+cp ../../modules/orchestration/multi-agent-init/templates/dev-agent.md .cursor/rules/dev-agent.mdc
+cp ../../modules/orchestration/multi-agent-init/templates/tester-agent.md .cursor/rules/tester-agent.mdc
 ```
 
 **替换占位符**（在 .mdc 文件中搜索替换）：

@@ -10,6 +10,22 @@ SOURCE_DIR="$SCRIPT_DIR/../../modules/orchestration/multi-agent-init"
 
 echo "安装 multi-agent-kit (Claude Code 适配器)..."
 
+# 通用 skill 安装函数
+install_skill() {
+  local rel_path="$1"   # 相对于 modules/ 的路径，如 productivity/learn
+  local skill_name="$2" # 安装到 ~/.claude/skills/ 下的目录名
+  local source_dir="$SCRIPT_DIR/../../modules/$rel_path"
+  local target_dir="$HOME/.claude/skills/$skill_name"
+  if [ -d "$source_dir" ]; then
+    mkdir -p "$target_dir"
+    for file in "$source_dir"/*.md; do
+      [ -f "$file" ] || continue
+      cp "$file" "$target_dir/$(basename "$file")"
+    done
+    echo "  ✓ $skill_name"
+  fi
+}
+
 # 创建 skill 目录结构
 mkdir -p "$SKILL_DIR/templates"
 mkdir -p "$SKILL_DIR/references"
@@ -33,16 +49,11 @@ for file in "$SOURCE_DIR/references"/*.md; do
 done
 
 # 复制 learn skill
-LEARN_SOURCE_DIR="$SCRIPT_DIR/../../modules/productivity/learn"
-LEARN_DIR="$HOME/.claude/skills/learn"
-if [ -d "$LEARN_SOURCE_DIR" ]; then
-  mkdir -p "$LEARN_DIR"
-  for file in "$LEARN_SOURCE_DIR"/*.md; do
-    filename=$(basename "$file")
-    cp "$file" "$LEARN_DIR/$filename"
-  done
-  echo "  ✓ learn skill"
-fi
+install_skill "productivity/learn" "learn"
+# 复制 diagnose skill
+install_skill "engineering/diagnose" "diagnose"
+# 复制 grill skill
+install_skill "productivity/grill" "grill"
 
 echo ""
 echo "安装完成！在 Claude Code 中说「初始化多智能体」或运行 /multi-agent-init 即可使用。"
