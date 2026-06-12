@@ -19,7 +19,8 @@
 | `doc/plan.md` | 任务列表 + 验收标准 + 进度 | 编排者管理，PM 可写入 |
 | `doc/prd/prd.md` | 产品需求文档 | PM Agent |
 | `doc/dev/dev-plan.md` | 技术方案 | dev Agent |
-| `doc/lessons-learned.md` | 经验教训库 | dev / frontend Agent 修正后追加，diagnose Skill 可追加 |
+| `doc/lessons-learned.md` | 经验教训库（活跃） | dev / frontend Agent 修正后追加，diagnose Skill 可追加 |
+| `doc/lessons-archive.md` | 经验教训归档（衰减/合并后的条目） | /learn skill 归档时写入 |
 | `doc/handoff.md` | 编排交接文档 | 编排者在中断时生成 |
 | `doc/main-log.md` | 编排日志 | 编排者 |
 | `doc/test-reports/` | 测试报告 | tester Agent |
@@ -45,3 +46,9 @@
 **经验复盘 (Learn Review)**：通过 `/learn` skill 定期审查、评分、提升经验的过程
 
 **进化管道 (Evolution Pipeline)**：经验 → 项目规则 → 全局规则的三级提升机制
+
+**衰减 (Decay)**：30 天未被命中的经验，置信度 -0.1；降到 0.1 以下标记为归档候选
+
+**归档 (Archive)**：满足归档标准（30天未命中 + 置信度 ≤ 0.3 + 命中 ≤ 1）的经验移到 `doc/lessons-archive.md`，Agent 不读取，/learn 可恢复
+
+**恢复 (Restore)**：将归档条目移回活跃文件，置信度重置为 0.3

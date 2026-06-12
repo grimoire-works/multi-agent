@@ -93,6 +93,7 @@ memory: project
 | 域 | {从下方选 1-2 个} |
 | 置信度 | 0.3 |
 | 命中次数 | 0 |
+| 最后命中 | {mmdd} |
 | 来源 | frontend:{任务编号} |
 | 类型 | bug-fix |
 
@@ -116,6 +117,7 @@ memory: project
 | 域 | prompt |
 | 置信度 | 0.3 |
 | 命中次数 | 0 |
+| 最后命中 | {mmdd} |
 | 来源 | frontend:{任务编号} |
 | 类型 | prompt-feedback |
 

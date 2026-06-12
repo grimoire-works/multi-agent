@@ -7,7 +7,7 @@
 - **5 种 Agent 角色**：核心开发 / 质量测试 / 前端开发 / 产品经理 / UI 设计师，按需组合
 - **编排模式**：主智能体只调度不干活，全部委托给子 Agent
 - **验收标准驱动**：每个任务定义可执行的验收条件，tester 逐条验证
-- **经验积累**：lessons-learned 自动注入后续任务，避免重复踩坑
+- **经验积累**：lessons-learned 自动注入后续任务，支持结构化经验、衰减归档、进化管道（经验 → 项目规则 → 全局规则）
 - **流水线执行**：开发前台 + 测试后台并行，任务级流水线
 
 ## 项目结构
@@ -154,13 +154,14 @@ node /path/to/multi-agent-kit/dist/index.js setup
 编排执行 (multi-agent-kit run)
   │
   ├─ 逐任务循环：
-  │   ├─ 注入 lessons-learned 经验
+  │   ├─ 注入项目规则 + 相关经验（≤5条）
   │   ├─ dev Agent 开发
   │   ├─ tester Agent 验收（AC 逐条验证）
   │   ├─ PASS → 下一个任务
   │   └─ FAIL → 修正循环（最多 3 轮）
   │
-  └─ 全部完成 → 统计报告
+  ├─ 全部完成 → 统计报告
+  └─ 可选：/learn 经验复盘 → 评分/提升/归档
 ```
 
 ## 产出文件
@@ -170,8 +171,10 @@ node /path/to/multi-agent-kit/dist/index.js setup
 | `.claude/agents/{代号}-*.md` | Agent 角色定义 |
 | `.claude/主智能体提示词.md` | 串行编排 prompt |
 | `.claude/主智能体提示词-teams.md` | 并行编排 prompt |
+| `.claude/rules/{domain}-rules.md` | 项目规则（从高置信度经验提升） |
 | `doc/plan.md` | 任务列表 + 验收标准 |
-| `doc/lessons-learned.md` | 经验教训库 |
+| `doc/lessons-learned.md` | 经验教训库（结构化格式 v2） |
+| `doc/lessons-archive.md` | 归档经验（衰减/合并后移入） |
 | `doc/main-log.md` | 编排日志 |
 | `doc/test-reports/` | 测试报告目录 |
 
