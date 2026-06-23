@@ -55,5 +55,9 @@ install_skill "engineering/diagnose" "diagnose"
 # 复制 grill skill
 install_skill "productivity/grill" "grill"
 
+# 复制共享领域词典
+cp "$SCRIPT_DIR/../../modules/CONTEXT.md" "$HOME/.claude/skills/CONTEXT.md"
+echo "  ✓ CONTEXT.md（共享领域词典）"
+
 echo ""
 echo "安装完成！在 Claude Code 中说「初始化多智能体」或运行 /multi-agent-init 即可使用。"

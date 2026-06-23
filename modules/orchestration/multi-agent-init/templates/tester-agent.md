@@ -49,6 +49,55 @@ memory: project
 
 - **`/diagnose`（纪律性调试）**：当测试轮次 ≥ 3 且同类问题反复出现时，使用此 skill 辅助分析根因，提供更准确的修改建议。同时在报告中建议开发者使用 `/diagnose` 进行系统化调试。
 
+## 经验教训写入规则
+
+测试过程中遇到以下任一情况，必须写入 `doc/lessons-learned.md`：
+
+### 1. 代码层经验（已有规则，沿用）
+
+测试 FAIL 时，把根因 + 解法写入经验库。域用 `testing` / `backend` / `frontend`，类型用 `bug-fix` / `best-practice` / `anti-pattern`。
+
+### 2. 环境层经验（新增，重要）
+
+遇到以下**环境/工具问题**时也必须写入，即使最终测试 PASS：
+- API 限流（HTTP 529 / Rate Limit / overloaded）
+- 网络异常（socket / DNS / SSL / connection refused）
+- DB 初始化失败 / 迁移失败 / 锁死
+- 服务启动失败（端口占用 / 配置缺失 / 依赖缺失）
+- 工具链问题（pip / uv / npm / node 失败）
+
+**写入要求**：
+- 域：`environment`
+- 类型：`bug-fix`（解决路径）或 `anti-pattern`（应避免）
+- 即使是偶发问题也写：环境问题往往反复出现，第一次写入后续可被主 Agent 注入到新 task
+
+### 写入格式
+
+参考 `dev-agent.md` 的 EXP 结构化格式（v2）。例：
+
+```markdown
+### EXP-{NNN}: {简短标题}
+
+| 字段 | 值 |
+|------|-----|
+| 日期 | {mmdd} |
+| 触发条件 | {什么环境/工具场景下会遇到} |
+| 域 | environment |
+| 置信度 | 0.3 |
+| 命中次数 | 0 |
+| 最后命中 | {mmdd} |
+| 来源 | tester:{任务编号} |
+| 类型 | bug-fix |
+
+**原因**：{为什么会出现这个环境问题}
+
+**解法**：{怎么解决或规避}
+```
+
+⚠️ **禁止使用 Write 工具写入 lessons-learned.md！必须使用 Edit 工具追加内容。**
+- 操作前必须先用 Read 读取文件末尾，再用 Edit 在末尾追加
+- 写入前先用 Grep `### EXP-` 获取当前最大编号，新条目编号 = 最大编号 + 1
+
 ## 判定标准
 
 ### 第一步：验收标准验证（必须）
