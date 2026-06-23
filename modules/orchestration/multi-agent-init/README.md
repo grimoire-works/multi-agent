@@ -7,6 +7,7 @@ Claude Code Skill — 为任意项目一键初始化多智能体开发工作流�
 - 自动探测项目信息（语言、框架、构建命令等）
 - 5 种 Agent 角色按需选择：核心开发 / 质量测试 / 前端开发 / 产品经理 / UI 设计师
 - 自动生成 Agent 定义、编排 prompt、任务计划（含验收标准）
+- **任务粒度自动约束**：30-150 行 / 1-3 AC / 涉及文件 ≤ 3 个（详见 `references/file-formats.md`）
 - 支持全新初始化和增量添加
 
 ## 安装
@@ -63,8 +64,10 @@ cp -r multi-agent-init ~/.claude/skills/
 | `.claude/agents/{代号}-*.md` | Agent 角色定义 |
 | `.claude/主智能体提示词.md` | 串行编排 prompt |
 | `.claude/主智能体提示词-teams.md` | 并行编排 prompt（>10 任务） |
+| `.claude/rules/{domain}-rules.md` | 项目规则（高置信度经验提升而来） |
 | `doc/plan.md` | 任务列表 + 验收标准 |
-| `doc/lessons-learned.md` | 经验教训库 |
+| `doc/lessons-learned.md` | 经验教训库（活跃） |
+| `doc/lessons-archive.md` | 经验教训归档（衰减/合并后移入） |
 | `doc/main-log.md` | 编排日志 |
 | `doc/test-reports/` | 测试报告目录 |
 
