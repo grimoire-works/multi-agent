@@ -36,17 +36,20 @@
 如果用户选择了"完整流程"或"PM 规划"，先执行上游工作（由 Team Lead 协调，不委托 Teammate）：
 
 **完整流程**（需有 PM + Designer + Dev Agent）：步骤 1-5 连续执行，中途不停顿不询问用户。各阶段产出写入 `doc/` 目录，用户可随时查看或打断。
-1. 启动 PM Teammate，分析需求，**追问边界条件直到用户确认所有细节**
-2. 追问完成后，PM 输出 PRD 到 `doc/prd/prd.md`
-3. 启动 Designer Teammate，根据 PRD 出设计稿到 `doc/design/`
-4. 启动 Dev Teammate，根据 PRD + 设计稿出技术方案（涉及模块、技术选型、数据流、影响范围、风险点），写入 `doc/dev/dev-plan.md`
-5. 启动 PM Teammate，根据确认后的 PRD + 设计稿 + 技术方案拆解任务，写入 `doc/plan.md`
+
+> **PM Teammate 协议**：Teams 模式下 PM 是 teammate（持续 idle），完成首轮分析后主动 SendMessage 给 Team Lead 报告问题。Team Lead 用 AskUserQuestion 问用户后 SendMessage 给 PM 转达决策。这与 Subagent 串行模式不同（Subagent 模式下 PM 是同步一次性调用，详见 `orchestrator.md`）。
+
+1. 启动 PM Teammate（name: "pm"），分析需求，列出需追问的边界条件
+2. **多轮讨论**：PM 报告需追问的问题 → 主 Agent 用 AskUserQuestion 问用户 → SendMessage to: "pm" 转达决策；循环直到 PM 确认所有边界已明确 → SendMessage to: "pm" 让其写 PRD 到 `doc/prd/prd.md`
+3. 启动 Designer Teammate（name: "designer"），根据 PRD 出设计稿到 `doc/design/`。**遵守 designer-agent.md 的多轮讨论协议**（主动 SendMessage 报告候选方案，等待用户反馈）
+4. 启动 Dev Teammate（name: "dev"），根据 PRD + 设计稿出技术方案（涉及模块、技术选型、数据流、影响范围、风险点），写入 `doc/dev/dev-plan.md`
+5. SendMessage to: "pm"（复用 idle 的 PM），根据确认后的 PRD + 设计稿 + 技术方案拆解任务，写入 `doc/plan.md`
 
 **PM 规划**（需有 PM + Dev Agent）：步骤 1-4 连续执行，中途不停顿不询问用户。
-1. 启动 PM Teammate，分析需求，**追问边界条件直到用户确认所有细节**
-2. 追问完成后，PM 输出 PRD 到 `doc/prd/prd.md`
-3. 启动 Dev Teammate，根据 PRD 出技术方案，写入 `doc/dev/dev-plan.md`
-4. 启动 PM Teammate，根据确认后的 PRD + 技术方案拆解任务，写入 `doc/plan.md`
+1. 启动 PM Teammate（name: "pm"），分析需求，列出需追问的边界条件
+2. **多轮讨论**：PM 报告需追问的问题 → 主 Agent 用 AskUserQuestion 问用户 → SendMessage to: "pm" 转达决策；循环直到 PM 确认所有边界已明确 → SendMessage to: "pm" 让其写 PRD 到 `doc/prd/prd.md`
+3. 启动 Dev Teammate（name: "dev"），根据 PRD 出技术方案，写入 `doc/dev/dev-plan.md`
+4. SendMessage to: "pm"（复用 idle 的 PM），根据确认后的 PRD + 技术方案拆解任务，写入 `doc/plan.md`
 
 **直接开发**：跳过上游，plan.md 已有任务或用户手动填写。
 
@@ -100,8 +103,19 @@ Team 规模建议：3-5 个 Teammate，每人 5-6 个任务。
 **分组步骤（必须严格执行）**：
 1. 列出每个任务的**涉及文件清单**（从 plan.md 的备注列读取）
 2. 按文件不重叠 + 依赖不倒置分组
-3. **二次验证**：对每个 Wave 内的任务两两检查文件交集，有交集则拆到不同 Wave
-4. 写入共享任务列表（`~/.claude/tasks/{代号}/`）
+3. **二次验证**（强制）：对每个 Wave 内的任务两两检查文件交集，有交集则拆到不同 Wave
+4. **冲突验证脚本**（每个 Wave 启动前必跑）：
+   ```
+   对 Wave N 内每个任务 i:
+     files_i = plan.md 中任务 i 的「涉及文件」列解析
+   对每对 (i, j), i ≠ j:
+     if files_i ∩ files_j ≠ ∅:
+       报错：「Wave N 内任务 i 和 j 文件冲突：{交集}」
+       拆分：把 j 移到 Wave N+1（或更后）
+   ```
+5. 写入共享任务列表（`~/.claude/tasks/{代号}/`）
+
+**禁止**：跳过冲突验证直接启动 Wave。文件冲突会导致 Teammate 互相覆盖，调试极其困难。
 
 **降级判断**：如果超过一半的 Wave 只能放 1 个任务（或需要串行），说明项目文件耦合度高，Agent Teams 并行优势有限。此时向用户建议降级为 Subagent 串行模式，省去 Team 管理开销。
 
@@ -154,7 +168,7 @@ pending_tests = []  // 队列：[(wave号, [任务列表])]
 
   // Step 4: 快速验证
   运行 {构建命令}
-  如有错误 → resume Teammate 修复
+  如有错误 → SendMessage 唤醒 dev Teammate 修复
 
   // Step 5: 启动 Wave N 测试（后台）+ 记录待检查
   启动测试 Teammate（run_in_background: true）
@@ -177,15 +191,18 @@ pending_tests = []  // 队列：[(wave号, [任务列表])]
 
 ### Wave 开发启动
 
+**name 规范**：每个 Wave 的 dev Teammate 用 `dev-wave{N}` 命名（如 Wave 1 = `dev-wave1`），便于修正循环按 Wave 唤醒。
+
 ```
 // 注入经验教训（每个 Wave 开发前必须执行，分级策略见 Step 2.5）
 // 如果 lessons-learned.md 为空且无项目规则则跳过，不拼入该段落
 
 Agent(
   subagent_type: "{代号}-dev",
+  name: "dev-wave{N}",
   mode: "bypassPermissions",
   run_in_background: true,
-  prompt: "你是 Team 的开发 Teammate。
+  prompt: "你是 Wave {N} 的开发 Teammate。
   请认领以下任务：{任务列表}
   dev-plan: doc/plan.md
   项目架构: CLAUDE.md
@@ -206,11 +223,12 @@ Agent(
 
 ### Wave 测试启动（后台）
 
-Wave 开发完成后，测试后台启动，不阻塞下一 Wave 开发：
+Wave 开发完成后，测试后台启动，不阻塞下一 Wave 开发。**name 规范**：`tester-wave{N}`（与 dev-wave{N} 对称）。
 
 ```
 Agent(
   subagent_type: "{代号}-tester",
+  name: "tester-wave{N}",
   mode: "bypassPermissions",
   run_in_background: true,
   prompt: "统一测试 Wave {N}，包含 {N} 个任务：
@@ -227,7 +245,7 @@ Agent(
 
 ## 修正流程
 
-Agent Teams **不支持 resume**。修正时：
+Teams 模式下，teammate 完成首轮任务后进入 **idle 状态**，可通过 `SendMessage(to: name)` 唤醒继续做事（无需新开 Teammate）。修正时优先复用 idle teammate，避免重启上下文成本。
 
 1. 从测试报告中提取 FAIL 的任务和问题（用 Grep）
 2. 暂停流水线，进入前台修正
@@ -235,16 +253,19 @@ Agent Teams **不支持 resume**。修正时：
    - `Glob(pattern=".claude/rules/*.md")` 检查项目规则
    - `Grep(pattern="{任务关键词}", path="doc/lessons-learned.md")` 关键词匹配
    - 无匹配且无项目规则则跳过
-4. 启动新的 Teammate 处理修正（传入测试报告路径 + 相关经验）
-5. 修正完成后重新测试该任务
-6. 修正通过后恢复流水线
+4. **优先**：`SendMessage(to: "dev-wave{N}", message: "上轮测试报告：{路径}\nFAIL 任务清单：{...}\n请修复后回复 tester 重测")` 唤醒 idle 中的 dev Teammate（N = FAIL 任务所在的 Wave 号）
+5. **备选**：如该 teammate 已被清理或上下文过载，启动新 Teammate 处理（传入测试报告路径 + 相关经验）
+6. 修正完成后，`SendMessage(to: "tester-wave{N}", message: "已修复，请重测 Wave {N}")` 唤醒 tester 重测
+7. 修正通过后恢复流水线
+
+> Teams 模式下 teammate 完成首轮后**保持 idle**，靠 `SendMessage(to: name)` 持续唤醒，不要重复启动 Teammate。
 
 ```
 Agent(
   subagent_type: "{代号}-dev",
   mode: "bypassPermissions",
   prompt: "修正任务：任务 {N} - {标题}
-  测试报告：doc/test-reports/task{N}-report.md
+  测试报告：doc/test-reports/task-{N}-r{round-1}.md   ← 上轮具体文件（避免被覆盖）
 
   {如存在项目规则}项目规则（必须遵守）：
   {规则内容}
@@ -289,7 +310,7 @@ Agent(
 
 如果 Teammate 超时，不要用 Bash 或 Read 读取报告内容。改用 Grep 从报告文件提取判定结果：
 ```
-Grep(pattern="^### 判定", path="doc/test-reports/task{N}-report.md")
+Grep(pattern="^### 判定", path="doc/test-reports/task-{N}-r0.md")
 ```
 只看第一个匹配行的 PASS/FAIL，**绝不读完整报告**。
 
@@ -313,7 +334,7 @@ Grep(pattern="^### 判定", path="doc/test-reports/task{N}-report.md")
 ### 统计验证（必须执行）
 
 统计数字按 Wave 逐条核实，**写入报告前交叉验证**：
-1. 列出每个任务的实际迭代次数（从日志中追溯）
+1. 列出每个任务的实际修正轮次（从日志中追溯，0 轮 = 首次通过）
 2. 求和确认总数等于任务总数
 3. 如有矛盾，以日志记录为准重新统计
 
@@ -376,7 +397,7 @@ Teams 流水线模式下，启动 tester teammate 时**默认走前台串行**�
 - 用户明确要求「并行加速」
 - 后台并发 ≤ 2，启动间隔 ≥ 30s
 
-原因：实测 ≥2 个后台 tester 并行触发 API 限流概率 60-80%，失败后必须重跑，总耗时反比纯串行慢一倍。详见 `.claude/rules/orchestration-patterns.md` R-001。
+原因：实测 ≥2 个后台 tester 并行触发 API 限流概率 60-80%，失败后必须重跑，总耗时反比纯串行慢一倍。详见 `.claude/rules/` 下的 R-001。
 
 ---
 
@@ -401,7 +422,7 @@ Teams 流水线模式下，启动 tester teammate 时**默认走前台串行**�
 - 260505 1435 Wave 1 开发完成
 - 260505 1435 启动测试：Task 1 + Task 2（后台）
 - 260505 1437 Wave 1 测试：Task 1 PASS / Task 2 PASS
-- 260505 1437 Wave 1 完成，迭代 1 次
+- 260505 1437 Wave 1 完成，0 轮修正
 
 - 260505 1438 Wave 2 开始：Task 3 ({标题}) + Task 4 ({标题})
 - ...
@@ -423,20 +444,24 @@ Teams 流水线模式下，启动 tester teammate 时**默认走前台串行**�
 6. **每个关键步骤写日志**（时间格式 yymmdd hhmm）
 7. **每完成一个 Wave 向用户报告进度**
 8. **doc/plan.md 由 Team Lead 管理**，Teammate 不修改
-9. **Agent Teams 不支持 resume**，修正时新开 Teammate
-10. **Teammate 数量不超过 5 个**，避免成本过高
-11. **每个 Wave PASS 后检查并更新 CLAUDE.md**（委托给开发 Teammate）
-12. **Wave 规划必须列出涉及文件**，分组后二次验证文件交集
-13. **流水线模式**：测试后台运行，开发不等待测试完成
-14. **降级判断**：文件耦合高时主动建议降级为串行模式
+9. **修正时用 `SendMessage(to: name)` 唤醒 idle Teammate**；如 teammate 已被清理或上下文过载则新开
+10. **SendMessage 安全规则**：调用前必须确认目标 Teammate 在当前会话已启动过且未退出。断点恢复时所有 Teammate 都需要重新启动（agent 是运行时进程，无法跨会话恢复）。
+11. **Teammate 数量不超过 5 个**，避免成本过高
+12. **每个 Wave PASS 后检查并更新 CLAUDE.md**（委托给开发 Teammate）
+13. **Wave 规划必须列出涉及文件**，分组后二次验证文件交集（启动前必跑冲突验证脚本，详见「任务分组策略」）
+14. **流水线模式**：测试后台运行，开发不等待测试完成；启动新 tester 前检查未完成的后台 tester 数量
+15. **降级判断**：文件耦合高时主动建议降级为串行模式
+16. **连续 3 个 Wave ⚠️ 时暂停**（参照串行模式的「连续 ⚠️ 终止编排」逻辑）
 
-### 上下文保护规则（15-18）
+### 上下文保护规则（17-20）
 
-15. **测试报告只传路径不读内容** — 用 Grep 提取 PASS/FAIL，报告路径传给 Teammate 让它自己读
-16. **所有代码修改委托给 Teammate** — 即使改一行代码也要委托，Team Lead 不碰源代码文件
-17. **后台通知简短确认** — 迟到的 Teammate 通知只需回复"已确认"，不复述内容
-18. **文件冲突时暂停** — 如果检测到两个 Teammate 改了同一文件，暂停并向用户报告
+17. **测试报告只传路径不读内容** — 用 Grep 提取 PASS/FAIL，报告路径传给 Teammate 让它自己读
+18. **所有代码修改委托给 Teammate** — 即使改一行代码也要委托，Team Lead 不碰源代码文件
+19. **后台通知简短确认** — 迟到的 Teammate 通知只需回复"已确认"，不复述内容
+20. **文件冲突时暂停** — 如果检测到两个 Teammate 改了同一文件，暂停并向用户报告
 
 ## 编排中断处理
 
-当用户说"暂停"/"明天继续"/会话即将结束时，**必须生成交接文档** `doc/handoff.md`，格式参照串行编排模板的中断处理章节。包含：当前 Wave 进度、已完成任务、活跃 Teammate、待处理测试、关键决策。
+当用户说"暂停"/"明天继续"/会话即将结束时，**必须生成交接文档** `doc/handoff.md`，格式参照串行编排模板的中断处理章节。包含：当前 Wave 进度、已完成任务、待处理测试（任务号）、关键决策。
+
+> ⚠️ **不保存 Teammate 状态**：Teammate 是运行时进程，无法跨会话恢复。断点恢复时所有 Teammate 都需要重新启动（详见 `references/harness-design-lessons.md` L-001）。handoff.md 只保存文件状态（任务进度 / pending_tests）。

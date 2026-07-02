@@ -76,7 +76,7 @@ function extractFiles(section: string): string[] {
   const lines = section.split('\n');
 
   for (const line of lines) {
-    // 表格行：| N | 任务 | 状态 | DEV_ID | TEST_ID | 涉及文件 | ...
+    // 表格行：| N | 任务 | 状态 | 涉及文件 | ...
     if (line.startsWith('|') && line.includes('`')) {
       // 提取反引号中的文件路径
       const backtickRegex = /`([^`]+)`/g;
