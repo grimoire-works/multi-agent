@@ -33,7 +33,7 @@
 
 **上游流程**：PM 规划 → Designer 出设计 → 技术方案 → 拆任务，发生在编排之前
 
-**修正循环**：测试 FAIL 后 resume dev Agent 修复，最多 3 轮
+**修正循环**：测试 FAIL 后新开 dev Agent（子 Agent 是一次性进程），通过 prompt 传报告路径衔接上下文，最多 3 轮
 
 **反馈循环**：diagnose 中的核心概念，可复现的 pass/fail 信号，用于定位 bug 根因
 

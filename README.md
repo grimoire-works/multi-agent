@@ -8,6 +8,7 @@
 - **编排模式**：主智能体只调度不干活，全部委托给子 Agent
 - **验收标准驱动**：每个任务定义可执行的验收条件，tester 逐条验证
 - **任务粒度约束**：30-150 行 / 1-3 AC / 涉及文件 ≤ 3 个，避免大任务拖慢执行
+- **通用协作原则**：P-001 ~ P-006 跨项目 meta-rule（不询问门槛 / 改动前先定位 / 同类根因升级 / 状态机完整性 / 共享资源同步 / 完整链路验证），`/multi-agent-init` 时自动注入到项目 `.claude/rules/principles.md`
 - **经验积累**：lessons-learned 自动注入后续任务，支持结构化经验、衰减归档、进化管道（经验 → 项目规则 → 全局规则）
 - **流水线执行**：开发前台 + 测试后台并行，任务级流水线
 
@@ -29,6 +30,7 @@ multi-agent-kit/
 │   │       │   ├── orchestrator.md
 │   │       │   └── orchestrator-teams.md
 │   │       └── references/               # 扩展参考文档
+│   │           ├── principles.md           # 通用协作原则 P-001~P-006（自动注入到项目）
 │   ├── engineering/                       # 工程类
 │   │   └── diagnose/                      # 纪律性调试模块
 │   │       └── SKILL.md
@@ -112,7 +114,7 @@ bash install.sh
 - 自动编排（开发 → 测试 → 修正循环）
 - 流水线模式（测试后台 + 开发前台）
 - Agent Teams 并行模式（>10 个任务）
-- resume 修正循环（复用同一个 agent）
+- 修正循环（新开 agent + prompt 传报告路径衔接上下文）
 
 ### 方式三：Cursor / Trae / Codex
 

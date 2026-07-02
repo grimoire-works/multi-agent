@@ -60,6 +60,23 @@
 {如果有 designer}  → - 设计方案 → `doc/design/`（designer Agent写入）
 ```
 
+## 项目规则继承行（始终包含）
+
+在「多智能体工作流」章节末尾或 CLAUDE.md 合适位置，必须包含：
+
+```markdown
+## 项目规则继承
+
+本项目继承以下规则，所有 Agent（主智能体 / dev / tester / pm / designer / frontend）必须遵守：
+
+- **通用协作原则** → `.claude/rules/principles.md`（P-001 ~ P-006，跨项目复用）
+- **项目专属规则** → `.claude/rules/project-specific.md`（如有，本项目的业务约束）
+
+主智能体编排时，将两类规则一起注入每个 dev/tester agent 的 prompt。
+```
+
+**理由**：让用户和后续 Agent 都明确知道规则来源和分层。`principles.md` 由 `/multi-agent-init` 自动创建；`project-specific.md` 由用户后续维护。
+
 ## UI 开发规则
 
 当满足以下任一条件时，从 `templates/designer-agent.md` 中提取 `<!-- CLAUDE.md-rules -->` 之后的「项目级 UI 规则」内容，追加到 CLAUDE.md 末尾：
