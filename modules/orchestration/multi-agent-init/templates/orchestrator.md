@@ -172,7 +172,7 @@
 - **修正循环**：新开 agent，在 prompt 里传上轮测试报告路径 + 任务上下文（AC、CLAUDE.md），让新 agent 自己读取并衔接
 - **后台测试**（流水线模式）：`Agent(run_in_background: true)` 不阻塞主流程，结果写入 `doc/test-reports/task-N-report.md`，主 Agent 用 Grep 提取判定
 
-> 如启用 Agent Teams 模式（N > 10 任务），所有 teammate 保持 idle 状态，用 `SendMessage(to: name)` 持续协作，详见 `.claude/主智能体提示词-teams.md`
+> 如启用 Agent Teams 模式（N > 10 任务），Wave 内多任务并行开发（每任务一 Teammate），详见 `.claude/主智能体提示词-teams.md`
 
 ---
 

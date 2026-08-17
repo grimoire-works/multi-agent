@@ -251,7 +251,7 @@ mkdir -p doc/design
 2. 替换所有基础占位符
 3. 在"任务执行循环"部分，根据完整 Agent 列表调整：
    - 如果有 dev → 保留 Step 1-4 的 dev 调度逻辑
-   - 如果有 frontend → 在 Step 1 增加 frontend 调度选项
+   - frontend 不进编排循环（它是按需手动调用的专项角色，用户明确要求"用前端做"时主 Agent 才调度 `{代号}-frontend`，编排模板中不生成 frontend 调度逻辑）
    - 如果有 tester → 保留测试步骤和修正循环
    - 如果没有 tester → 去掉测试步骤，开发完成后直接标记完成
    - 如果有 pm → 在任务循环前增加"可选：PM 规划"步骤
