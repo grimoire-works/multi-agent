@@ -11,6 +11,17 @@ export interface ProjectConfig {
   installCommand?: string;
   agents: AgentRole[];
   projectPath: string;
+  orchestration?: OrchestrationConfig;
+}
+
+// ── 编排可调参数（缺省时使用内置默认值）──
+
+export interface OrchestrationConfig {
+  maxCorrectionRounds?: number;
+  agentModel?: string;
+  agentMaxTurns?: number;
+  agentTimeoutMs?: number;
+  buildTimeoutMs?: number;
 }
 
 export type AgentRole = 'dev' | 'tester' | 'frontend' | 'pm' | 'designer';

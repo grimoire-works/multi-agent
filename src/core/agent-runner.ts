@@ -17,6 +17,7 @@ export interface AgentSessionOptions {
   maxTurns?: number;
   apiKey?: string;
   model?: string;
+  timeoutMs?: number;
 }
 
 /**
@@ -31,10 +32,11 @@ export class AgentRunner {
 
   constructor(options: AgentSessionOptions) {
     this.options = {
-      maxTurns: 40,
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      model: 'claude-sonnet-4-5-20250514',
       ...options,
+      maxTurns: options.maxTurns ?? 40,
+      apiKey: options.apiKey ?? process.env.ANTHROPIC_API_KEY,
+      model: options.model ?? 'claude-sonnet-4-5-20250514',
+      timeoutMs: options.timeoutMs ?? 10 * 60 * 1000,
     };
   }
 
@@ -145,21 +147,45 @@ export class AgentRunner {
       }
     });
 
-    // 执行 prompt
+    // 执行 prompt（带超时保护，结束后释放会话）
     return new Promise<AgentResult>((resolve) => {
-      resolveRun = resolve;
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
+      const finish = (result: AgentResult) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        resolveRun = null;
+        try {
+          session.dispose();
+        } catch {
+          // 清理失败不影响结果返回
+        }
+        resolve(result);
+      };
+
+      resolveRun = finish;
+
+      timer = setTimeout(() => {
+        void session.abort().catch(() => {});
+        finish({
+          success: false,
+          output: lastOutput,
+          inputTokens: 0,
+          outputTokens: 0,
+          error: `Agent 执行超时（${this.options.timeoutMs}ms），已中止`,
+        });
+      }, this.options.timeoutMs);
 
       session.prompt(prompt).catch((err: Error) => {
-        if (resolveRun) {
-          resolveRun = null;
-          resolve({
-            success: false,
-            output: '',
-            inputTokens: 0,
-            outputTokens: 0,
-            error: err.message,
-          });
-        }
+        finish({
+          success: false,
+          output: '',
+          inputTokens: 0,
+          outputTokens: 0,
+          error: err.message,
+        });
       });
     });
   }
