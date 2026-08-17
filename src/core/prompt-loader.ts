@@ -98,7 +98,7 @@ export function buildDevPrompt(task: Task, lessonsLearned: string): string {
 /**
  * 构建测试任务的 user prompt
  */
-export function buildTesterPrompt(task: Task): string {
+export function buildTesterPrompt(task: Task, reportRelPath: string): string {
   const lines: string[] = [
     `测试任务：任务 ${task.id} - ${task.title}`,
   ];
@@ -109,7 +109,7 @@ export function buildTesterPrompt(task: Task): string {
 
   lines.push('dev-plan: doc/plan.md');
   lines.push('项目架构: CLAUDE.md');
-  lines.push('输出目录: doc/test-reports/');
+  lines.push(`输出文件：${reportRelPath}   ← 必须用此文件名`);
 
   // AC 注入
   if (task.acceptanceCriteria.length > 0) {
@@ -163,27 +163,42 @@ export function buildCorrectionPrompt(
 /**
  * 构建重测的 user prompt
  */
-export function buildRetestPrompt(task: Task): string {
+export function buildRetestPrompt(task: Task, prevReportRelPath: string, reportRelPath: string): string {
   return [
     `开发者已修正代码（任务 ${task.id} - ${task.title}），请重新审查。`,
+    `上轮报告：${prevReportRelPath}`,
+    `输出文件：${reportRelPath}   ← 必须用此文件名，禁止覆盖其他 round 的报告`,
     '对上次 FAIL 的每个问题，逐一验证是否已修复。',
-    '输出：追加到 doc/test-reports/ 中的测试报告。',
     '',
     '请按测试工作流程执行。',
   ].join('\n');
 }
 
 /**
- * 读取 lessons-learned.md 内容
+ * 读取 lessons-learned.md 内容（v2 结构化格式，取最近 5 条）
  */
 export function readLessonsLearned(projectDir: string): string {
   const filePath = path.join(projectDir, 'doc', 'lessons-learned.md');
   if (!fs.existsSync(filePath)) return '';
 
   const content = fs.readFileSync(filePath, 'utf-8');
-  // 只取最近 5 条经验
+
+  // v2 格式：`### EXP-NNN: 标题` 分段，新条目追加在文件末尾，取最后 5 条
+  const sections = content.split(/^###\s+(?=EXP-\d+)/m).filter(s => s.startsWith('EXP-'));
+  if (sections.length > 0) {
+    return sections.slice(-5).map(section => {
+      const lines = section.split('\n');
+      const header = lines[0].trim();
+      const trigger = lines.find(l => l.includes('触发条件'))?.trim();
+      const reason = lines.find(l => l.startsWith('**原因**'))?.trim();
+      const solution = lines.find(l => l.startsWith('**解法**'))?.trim();
+      return [header, trigger, reason, solution].filter(Boolean).join('\n');
+    }).join('\n\n');
+  }
+
+  // 旧版列表格式兼容：`- [xxx]` 行
   const lines = content.split('\n').filter(l => l.startsWith('- ['));
-  return lines.slice(0, 5).join('\n');
+  return lines.slice(-5).join('\n');
 }
 
 /**

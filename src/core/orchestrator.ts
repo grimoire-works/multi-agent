@@ -7,7 +7,8 @@ import { AgentRunner } from './agent-runner.js';
 import { loadAgentPrompt, buildDevPrompt, buildTesterPrompt, buildCorrectionPrompt, buildRetestPrompt, readLessonsLearned } from './prompt-loader.js';
 import { log, showProgress, showSpinner, showSummaryReport, formatTestVerdict } from './console.js';
 
-const MAX_CORRECTION_ROUNDS = 3;
+const DEFAULT_MAX_CORRECTION_ROUNDS = 3;
+const DEFAULT_BUILD_TIMEOUT_MS = 120_000;
 
 export class Orchestrator {
   private config: ProjectConfig;
@@ -16,6 +17,21 @@ export class Orchestrator {
   constructor(config: ProjectConfig, state: StateManager) {
     this.config = config;
     this.state = state;
+  }
+
+  private get maxCorrectionRounds(): number {
+    return this.config.orchestration?.maxCorrectionRounds ?? DEFAULT_MAX_CORRECTION_ROUNDS;
+  }
+
+  private createRunner(systemPrompt: string): AgentRunner {
+    const orch = this.config.orchestration;
+    return new AgentRunner({
+      cwd: this.config.projectPath,
+      systemPrompt,
+      model: orch?.agentModel,
+      maxTurns: orch?.agentMaxTurns,
+      timeoutMs: orch?.agentTimeoutMs,
+    });
   }
 
   async run(): Promise<void> {
@@ -49,10 +65,7 @@ export class Orchestrator {
 
     // 2. 开发
     const devPrompt = loadAgentPrompt('dev', this.config);
-    const devRunner = new AgentRunner({
-      cwd: this.config.projectPath,
-      systemPrompt: devPrompt,
-    });
+    const devRunner = this.createRunner(devPrompt);
 
     const devSpinner = showSpinner(`开发中：任务 ${task.id}...`);
     const devResult = await devRunner.run(buildDevPrompt(task, lessons));
@@ -99,21 +112,20 @@ export class Orchestrator {
   private async runTestLoop(task: Task): Promise<void> {
     const testerPrompt = loadAgentPrompt('tester', this.config);
     let attempts = 1;
+    // 报告命名遵循模板契约：task-{N}-r{round}.md，每 round 独立文件不覆盖
+    let round = 0;
+    let reportRelPath = this.reportRelPath(task.id, round);
 
     // 首次测试
-    const testRunner = new AgentRunner({
-      cwd: this.config.projectPath,
-      systemPrompt: testerPrompt,
-    });
+    const testRunner = this.createRunner(testerPrompt);
 
     const testSpinner = showSpinner(`测试中：任务 ${task.id}...`);
-    const testResult = await testRunner.run(buildTesterPrompt(task));
+    const testResult = await testRunner.run(buildTesterPrompt(task, reportRelPath));
     testSpinner.stop();
 
     this.state.addTokenUsage(testResult.inputTokens, testResult.outputTokens);
 
-    const reportPath = path.join(this.config.projectPath, 'doc', 'test-reports', `task${task.id}-report.md`);
-    const verdict = this.parseTestVerdict(testResult.output, reportPath);
+    let verdict = this.parseTestVerdict(testResult.output, this.absReportPath(reportRelPath));
 
     log.info(`首次测试：${formatTestVerdict(verdict)}`);
 
@@ -124,23 +136,27 @@ export class Orchestrator {
       return;
     }
 
+    if (verdict === 'SKIP') {
+      this.state.updateTaskStatus(task.id, 'needs_human', attempts);
+      log.warn(`任务 ${task.id}：测试结果无法判定（报告无判定行且返回无「测试结果：」），标记为人工处理`);
+      return;
+    }
+
     // 修正循环
-    for (let round = 1; round <= MAX_CORRECTION_ROUNDS; round++) {
+    while (round < this.maxCorrectionRounds) {
+      round++;
       attempts++;
 
       const lessons = readLessonsLearned(this.config.projectPath);
 
-      // 修正
+      // 修正（引用上轮报告）
       log.step(`第 ${round} 轮修正...`);
       const devPrompt = loadAgentPrompt('dev', this.config);
-      const fixRunner = new AgentRunner({
-        cwd: this.config.projectPath,
-        systemPrompt: devPrompt,
-      });
+      const fixRunner = this.createRunner(devPrompt);
 
       const fixSpinner = showSpinner(`修正中：第 ${round} 轮...`);
       const fixResult = await fixRunner.run(
-        buildCorrectionPrompt(task, reportPath, lessons, round)
+        buildCorrectionPrompt(task, reportRelPath, lessons, round)
       );
       fixSpinner.stop();
 
@@ -151,42 +167,58 @@ export class Orchestrator {
         continue;
       }
 
-      // 重测
-      const retestRunner = new AgentRunner({
-        cwd: this.config.projectPath,
-        systemPrompt: testerPrompt,
-      });
+      // 重测（新 round 新报告文件，不覆盖上轮）
+      const prevReportRelPath = reportRelPath;
+      reportRelPath = this.reportRelPath(task.id, round);
+      const retestRunner = this.createRunner(testerPrompt);
 
       const retestSpinner = showSpinner(`重测中：第 ${round} 轮...`);
-      const retestResult = await retestRunner.run(buildRetestPrompt(task));
+      const retestResult = await retestRunner.run(
+        buildRetestPrompt(task, prevReportRelPath, reportRelPath)
+      );
       retestSpinner.stop();
 
       this.state.addTokenUsage(retestResult.inputTokens, retestResult.outputTokens);
 
-      const retestVerdict = this.parseTestVerdict(retestResult.output, reportPath);
-      log.info(`第 ${round} 轮重测：${formatTestVerdict(retestVerdict)}`);
+      verdict = this.parseTestVerdict(retestResult.output, this.absReportPath(reportRelPath));
+      log.info(`第 ${round} 轮重测：${formatTestVerdict(verdict)}`);
 
-      if (retestVerdict === 'PASS') {
+      if (verdict === 'PASS') {
         this.state.updateTaskStatus(task.id, 'completed', attempts);
         log.success(`任务 ${task.id} 完成（${attempts} 次迭代）`);
         showProgress(1, 1, task.title);
         return;
       }
+
+      if (verdict === 'SKIP') {
+        this.state.updateTaskStatus(task.id, 'needs_human', attempts);
+        log.warn(`任务 ${task.id}：第 ${round} 轮重测结果无法判定，标记为人工处理`);
+        return;
+      }
     }
 
-    // 3 轮修正后仍 FAIL
+    // 修正轮次耗尽仍 FAIL
     this.state.updateTaskStatus(task.id, 'needs_human', attempts);
-    log.warn(`任务 ${task.id}：${MAX_CORRECTION_ROUNDS} 轮修正后仍未通过，标记为人工处理`);
+    log.warn(`任务 ${task.id}：${this.maxCorrectionRounds} 轮修正后仍未通过，标记为人工处理`);
   }
 
   // ── 辅助方法 ──
+
+  /** 测试报告相对路径，遵循模板契约 task-{N}-r{round}.md */
+  private reportRelPath(taskId: number, round: number): string {
+    return path.join('doc', 'test-reports', `task-${taskId}-r${round}.md`);
+  }
+
+  private absReportPath(reportRelPath: string): string {
+    return path.join(this.config.projectPath, reportRelPath);
+  }
 
   private runBuildCheck(): boolean {
     if (!this.config.buildCommand) return true;
     try {
       execSync(this.config.buildCommand, {
         cwd: this.config.projectPath,
-        timeout: 120000,
+        timeout: this.config.orchestration?.buildTimeoutMs ?? DEFAULT_BUILD_TIMEOUT_MS,
         stdio: 'pipe',
       });
       return true;
@@ -196,28 +228,30 @@ export class Orchestrator {
   }
 
   private parseTestVerdict(output: string, reportPath: string): TestVerdict {
-    // 先检查测试报告文件
+    // 1. 测试报告文件中的最终判定行（### 判定：PASS / FAIL），取最后一次出现
     if (fs.existsSync(reportPath)) {
       const report = fs.readFileSync(reportPath, 'utf-8');
-      if (report.includes('### 判定：PASS') || report.includes('判定：PASS')) {
-        return 'PASS';
-      }
-      if (report.includes('### 判定：FAIL') || report.includes('判定：FAIL')) {
-        return 'FAIL';
-      }
+      const reportVerdict = this.extractFinalVerdict(report);
+      if (reportVerdict) return reportVerdict;
     }
 
-    // 从 agent 输出中判断
-    const upper = output.toUpperCase();
-    if (upper.includes('PASS') && !upper.includes('FAIL')) {
-      return 'PASS';
-    }
-    if (upper.includes('FAIL')) {
-      return 'FAIL';
-    }
+    // 2. agent 输出中的最终判定行（tester 可能回显报告内容）
+    const outputVerdict = this.extractFinalVerdict(output);
+    if (outputVerdict) return outputVerdict;
 
-    // 无法判断时默认 PASS（无 tester 的场景）
-    return 'PASS';
+    // 3. tester 的返回契约格式：测试结果：PASS / FAIL
+    const returnMatch = [...output.matchAll(/^测试结果[：:]\s*(PASS|FAIL)\s*$/gm)].at(-1)?.[1];
+    if (returnMatch === 'PASS' || returnMatch === 'FAIL') return returnMatch;
+
+    // 4. 无法判定：不放行，交由人工处理
+    return 'SKIP';
+  }
+
+  private extractFinalVerdict(text: string): TestVerdict | null {
+    const matches = [...text.matchAll(/^#{2,3}\s*判定[：:]\s*(PASS|FAIL)\s*$/gm)];
+    const final = matches.at(-1)?.[1];
+    if (final === 'PASS' || final === 'FAIL') return final;
+    return null;
   }
 
   private showFinalReport(): void {

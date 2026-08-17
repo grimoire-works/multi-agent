@@ -4,14 +4,23 @@ import type { Task, AcceptanceCriterion, TaskStatus } from '../types/index.js';
 /**
  * 解析 plan.md 提取任务和验收标准
  *
- * 支持的 plan.md 格式：
- * - 任务以 `## 任务 N:` 开头
- * - 表格行含状态列（⏳/✅/⚠️）
- * - AC 段落以 `### AC-N:` 开头
- * - AC 条目格式：`操作 → 期望结果`
+ * 支持两种格式：
+ * - 表格格式（planner / file-formats.md 约定）：任务列表表格 + `### AC-N:` 段落
+ * - 分段格式（旧版兼容）：任务以 `## 任务 N:` 开头
+ *
+ * 两种格式中 AC 条目均为 `操作 → 期望结果`
  */
 export function parsePlan(planPath: string): Task[] {
   const content = fs.readFileSync(planPath, 'utf-8');
+  const tasks = parseTaskSections(content);
+  if (tasks.length > 0) return tasks;
+  return parseTaskTable(content);
+}
+
+/**
+ * 解析分段格式：任务以 `## 任务 N:` 开头
+ */
+function parseTaskSections(content: string): Task[] {
   const tasks: Task[] = [];
 
   // 按 "## 任务 N:" 分割
@@ -69,6 +78,75 @@ function extractStatus(section: string): TaskStatus {
   if (section.includes('⚠️')) return 'needs_human';
   if (section.includes('🔄') || section.includes('进行中')) return 'in_progress';
   return 'pending';
+}
+
+/**
+ * 解析表格格式：任务列表表格行（| N | 标题 | 状态 | 涉及文件 | 见 AC-N | ...）
+ * AC 段落（### AC-N:）按表格中"见 AC-N"引用关联
+ */
+function parseTaskTable(content: string): Task[] {
+  const acMap = parseAcSections(content);
+
+  const tasks: Task[] = [];
+  const lines = content.split('\n');
+
+  for (const line of lines) {
+    if (!line.startsWith('|')) continue;
+
+    const cells = line.split('|').map(c => c.trim());
+    // cells[0] 为行首 | 产生的空串；第一列必须是纯数字任务号（排除表头/分隔行）
+    const idCell = cells[1];
+    if (!/^\d+$/.test(idCell)) continue;
+
+    const title = cells[2];
+    if (!title) continue;
+
+    const status = extractStatus(cells[3]);
+    const files = extractFilesFromCell(cells[4]);
+
+    const acNums = [...(cells[5] ?? '').matchAll(/AC-(\d+)/g)].map(m => parseInt(m[1], 10));
+    const acceptanceCriteria = [...new Set(acNums)].flatMap(n => acMap.get(n) ?? []);
+
+    tasks.push({
+      id: parseInt(idCell, 10),
+      title,
+      status,
+      files,
+      acceptanceCriteria,
+      attempts: 0,
+    });
+  }
+
+  return tasks;
+}
+
+function parseAcSections(content: string): Map<number, AcceptanceCriterion[]> {
+  const acMap = new Map<number, AcceptanceCriterion[]>();
+
+  const acRegex = /^###\s*AC-(\d+)\s*[:：]?\s*(.*)$/gm;
+  const matches: { index: number; id: number }[] = [];
+  let m;
+  while ((m = acRegex.exec(content)) !== null) {
+    matches.push({ index: m.index, id: parseInt(m[1], 10) });
+  }
+
+  for (let i = 0; i < matches.length; i++) {
+    const start = matches[i].index;
+    const end = i + 1 < matches.length ? matches[i + 1].index : content.length;
+    acMap.set(matches[i].id, extractACItems(content.substring(start, end), matches[i].id));
+  }
+
+  return acMap;
+}
+
+function extractFilesFromCell(cell: string): string[] {
+  if (!cell || cell === '-') return [];
+  return [...new Set(
+    cell.replace(/`/g, '')
+      .split(',')
+      .map(f => f.trim())
+      .filter(f => f && f !== '-'),
+  )];
 }
 
 function extractFiles(section: string): string[] {
@@ -189,7 +267,7 @@ function extractACItems(text: string, acId: number): AcceptanceCriterion[] {
  * 更新 plan.md 中指定任务的状态标记
  */
 export function updateTaskStatus(planPath: string, taskId: number, status: TaskStatus): void {
-  let content = fs.readFileSync(planPath, 'utf-8');
+  const content = fs.readFileSync(planPath, 'utf-8');
 
   const statusMap: Record<TaskStatus, string> = {
     pending: '⏳ 待办',
@@ -199,50 +277,38 @@ export function updateTaskStatus(planPath: string, taskId: number, status: TaskS
   };
 
   const newStatus = statusMap[status];
+  const replaceStatus = (line: string) => line
+    .replace(/⏳\s*待办/g, newStatus)
+    .replace(/✅\s*完成/g, newStatus)
+    .replace(/⚠️\s*人工处理/g, newStatus)
+    .replace(/🔄\s*进行中/g, newStatus);
 
-  // 查找任务行并在表格中替换状态
+  // 表格行：任务号列匹配即替换（表格格式 + 分段格式中的任务表格）
   const lines = content.split('\n');
-  let inTaskSection = false;
-  let taskHeaderFound = false;
-
+  let updated = false;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    if (!line.startsWith('|')) continue;
 
-    // 找到任务标题
-    if (line.match(new RegExp(`^##\\s*任务\\s*${taskId}\\s*[:：]`))) {
-      taskHeaderFound = true;
-      inTaskSection = true;
-      continue;
-    }
-
-    // 遇到下一个任务标题，停止
-    if (inTaskSection && line.match(/^##\s*任务\s*\d+\s*[:：]/)) {
-      break;
-    }
-
-    // 在任务 section 内替换表格行中的状态
-    if (inTaskSection && line.startsWith('|') && line.includes(`任务 ${taskId}`)) {
-      // 替换该行中的状态标记
-      lines[i] = line
-        .replace(/⏳\s*待办/g, newStatus)
-        .replace(/✅\s*完成/g, newStatus)
-        .replace(/⚠️\s*人工处理/g, newStatus)
-        .replace(/🔄\s*进行中/g, newStatus);
+    const cells = line.split('|').map(c => c.trim());
+    const rowMatchesTask = cells[1] === String(taskId) || line.includes(`任务 ${taskId}`);
+    if (rowMatchesTask) {
+      const replaced = replaceStatus(line);
+      if (replaced !== line) {
+        lines[i] = replaced;
+        updated = true;
+      }
     }
   }
-
-  // 如果没找到表格行，在任务标题后面找 ⏳ 替换
-  if (taskHeaderFound) {
-    content = lines.join('\n');
-  } else {
-    // 全文替换该任务的状态（简单模式）
-    const oldStatuses = ['⏳ 待办', '✅ 完成', '⚠️ 人工处理', '🔄 进行中'];
-    // 仅在该任务的段落内替换
-    const taskRegex = new RegExp(
-      `(##\\s*任务\\s*${taskId}\\s*[:：][^#]*?)(${oldStatuses.join('|')})`
-    );
-    content = content.replace(taskRegex, `$1${newStatus}`);
+  if (updated) {
+    fs.writeFileSync(planPath, lines.join('\n'), 'utf-8');
+    return;
   }
 
-  fs.writeFileSync(planPath, content, 'utf-8');
+  // 分段格式兜底：`## 任务 N:` 段落内首次出现的状态标记
+  const oldStatuses = ['⏳ 待办', '✅ 完成', '⚠️ 人工处理', '🔄 进行中'];
+  const taskRegex = new RegExp(
+    `(##\\s*任务\\s*${taskId}\\s*[:：][^#]*?)(${oldStatuses.join('|')})`
+  );
+  fs.writeFileSync(planPath, content.replace(taskRegex, `$1${newStatus}`), 'utf-8');
 }
