@@ -31,8 +31,20 @@ export class StateManager {
   }
 
   loadConfig(): ProjectConfig {
-    const raw = fs.readFileSync(this.configPath(), 'utf-8');
-    return JSON.parse(raw);
+    const configPath = this.configPath();
+    let raw: string;
+    try {
+      raw = fs.readFileSync(configPath, 'utf-8');
+    } catch {
+      console.error(`错误：无法读取配置文件 ${configPath}`);
+      process.exit(1);
+    }
+    try {
+      return JSON.parse(raw) as ProjectConfig;
+    } catch {
+      console.error(`错误：配置文件损坏（非法 JSON）：${configPath}\n请删除该文件后重新运行 multi-agent-kit init`);
+      process.exit(1);
+    }
   }
 
   saveConfig(config: ProjectConfig): void {
@@ -73,18 +85,23 @@ export class StateManager {
   loadState(): RunState {
     if (this.state) return this.state;
 
-    // 尝试从 state.json 恢复
+    // 尝试从 state.json 恢复（损坏时丢弃，回退到 plan.md 重建）
     if (fs.existsSync(this.statePath())) {
-      const raw = fs.readFileSync(this.statePath(), 'utf-8');
-      this.state = JSON.parse(raw);
+      try {
+        const raw = fs.readFileSync(this.statePath(), 'utf-8');
+        this.state = JSON.parse(raw);
 
-      // 刷新任务列表（plan.md 可能被用户修改）
-      const freshTasks = parsePlan(this.planPath());
-      this.mergeTasks(freshTasks);
-      return this.state!;
+        // 刷新任务列表（plan.md 可能被用户修改）
+        const freshTasks = parsePlan(this.planPath());
+        this.mergeTasks(freshTasks);
+        return this.state!;
+      } catch {
+        console.error(`警告：状态文件损坏，已从 plan.md 重建：${this.statePath()}`);
+        this.state = null;
+      }
     }
 
-    // 无状态文件，从 plan.md 初始化
+    // 无状态文件（或已损坏），从 plan.md 初始化
     return this.initState();
   }
 

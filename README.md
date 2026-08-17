@@ -8,6 +8,7 @@
 - **编排模式**：主智能体只调度不干活，全部委托给子 Agent
 - **验收标准驱动**：每个任务定义可执行的验收条件，tester 逐条验证
 - **任务粒度约束**：30-150 行 / 1-3 AC / 涉及文件 ≤ 3 个，避免大任务拖慢执行
+- **通用协作原则**：P-001 ~ P-006 跨项目 meta-rule（不询问门槛 / 改动前先定位 / 同类根因升级 / 状态机完整性 / 共享资源同步 / 完整链路验证），`/multi-agent-init` 时自动注入到项目 `.claude/rules/principles.md`
 - **经验积累**：lessons-learned 自动注入后续任务，支持结构化经验、衰减归档、进化管道（经验 → 项目规则 → 全局规则）
 - **流水线执行**：开发前台 + 测试后台并行，任务级流水线
 
@@ -29,6 +30,7 @@ multi-agent-kit/
 │   │       │   ├── orchestrator.md
 │   │       │   └── orchestrator-teams.md
 │   │       └── references/               # 扩展参考文档
+│   │           ├── principles.md           # 通用协作原则 P-001~P-006（自动注入到项目）
 │   ├── engineering/                       # 工程类
 │   │   └── diagnose/                      # 纪律性调试模块
 │   │       └── SKILL.md
@@ -43,12 +45,6 @@ multi-agent-kit/
 │   ├── commands/
 │   ├── core/
 │   └── types/
-│
-├── adapters/                              # 各平台适配层
-│   ├── claude-code/
-│   ├── cursor/
-│   ├── trae/
-│   └── codex/
 │
 ├── package.json
 ├── tsconfig.json
@@ -99,38 +95,13 @@ node /path/to/multi-agent-kit/dist/index.js status
 cp -r modules/orchestration/multi-agent-init ~/.claude/skills/multi-agent-init
 ```
 
-或使用安装脚本：
-
-```bash
-cd adapters/claude-code
-bash install.sh
-```
-
 安装后在项目中说"初始化多智能体"或运行 `/multi-agent-init`。
 
 支持的完整功能：
 - 自动编排（开发 → 测试 → 修正循环）
 - 流水线模式（测试后台 + 开发前台）
 - Agent Teams 并行模式（>10 个任务）
-- resume 修正循环（复用同一个 agent）
-
-### 方式三：Cursor / Trae / Codex
-
-使用 CLI 初始化后，运行 setup 命令自动生成平台规则文件：
-
-```bash
-# init 完成后会询问是否生成，也可以单独运行：
-node /path/to/multi-agent-kit/dist/index.js setup
-# → 选择目标平台 → 自动替换占位符 → 生成到对应 rules 目录
-```
-
-生成后在对应平台的对话中说"按开发模式工作流程执行"即可使用。
-
-支持基础功能：
-- Agent 角色定义（dev/tester/...）
-- plan.md 任务管理 + 验收标准
-- lessons-learned 经验积累
-- tester AC 验证 + 代码质量审查
+- 修正循环（新开 agent + prompt 传报告路径衔接上下文）
 
 ## Agent 角色说明
 
@@ -150,7 +121,6 @@ node /path/to/multi-agent-kit/dist/index.js setup
   ├─ 探测项目信息 → 确认/补充
   ├─ 选择 Agent 角色
   ├─ AI 扫描代码 → 生成 plan.md（含验收标准）
-  ├─ 可选：setup 生成平台规则文件
   │
 编排执行 (multi-agent-kit run)
   │

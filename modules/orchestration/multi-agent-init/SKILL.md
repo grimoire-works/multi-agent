@@ -262,6 +262,7 @@ mkdir -p doc/design
 **读取 `references/file-formats.md`**，按其中的格式规范创建以下文件：
 
 - `.claude/settings.local.json` — 权限配置
+- `.claude/rules/principles.md` — 通用协作原则（**直接拷贝 `references/principles.md` 完整内容**）
 - `doc/plan.md` — 空模板（仅 Task 0）
 - `doc/lessons-learned.md` — 空文件
 - `doc/main-log.md` — 启动日志
@@ -269,6 +270,7 @@ mkdir -p doc/design
 ### 增量模式
 
 - `settings.local.json`：合并 permissions.allow 数组（不覆盖已有条目）
+- `.claude/rules/principles.md`：**不覆盖**（用户可能已本地调整）
 - `doc/plan.md`：**不覆盖**（已有任务进度）
 - `doc/lessons-learned.md`：**不覆盖**（已有经验记录）
 - `doc/main-log.md`：**追加**一行日志，如 `- {yymmdd hhmm} 增量添加 Agent: {新增列表}`

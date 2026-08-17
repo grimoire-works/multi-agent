@@ -3,7 +3,6 @@
 import { Command } from 'commander';
 import { initCommand } from './commands/init.js';
 import { runCommand, statusCommand } from './commands/run.js';
-import { setupCommand } from './commands/setup.js';
 
 const program = new Command();
 
@@ -37,14 +36,6 @@ program
   .argument('[project-dir]', '项目目录路径（默认当前目录）')
   .action(async (projectDir?: string) => {
     await runCommand(projectDir);
-  });
-
-program
-  .command('setup')
-  .description('生成平台规则文件：将 prompt 替换占位符后配置到 Cursor/Trae/Codex')
-  .argument('[project-dir]', '项目目录路径（默认当前目录）')
-  .action(async (projectDir?: string) => {
-    await setupCommand(projectDir);
   });
 
 program

@@ -5,7 +5,6 @@ import type { ProjectConfig, AgentRole } from '../types/index.js';
 import { log, showSpinner } from '../core/console.js';
 import { AgentRunner } from '../core/agent-runner.js';
 import { buildPlannerSystemPrompt, buildPlannerUserPrompt } from '../core/prompt-loader.js';
-import { askSetup } from './setup.js';
 
 // ── 项目探测 ──
 
@@ -330,9 +329,6 @@ export async function initCommand(projectDir?: string): Promise<void> {
   console.log('    1. 审查 doc/plan.md（可微调任务和验收标准）');
   console.log('    2. 运行 multi-agent-kit run 开始执行');
   console.log('');
-
-  // 询问是否生成平台规则文件
-  await askSetup(config, cwd);
 }
 
 // ── 辅助 ──

@@ -71,6 +71,13 @@ cp -r multi-agent-init ~/.claude/skills/
 | `doc/main-log.md` | 编排日志 |
 | `doc/test-reports/` | 测试报告目录 |
 
+## 维护者参考
+
+修改 `templates/` 或 `src/core/prompt-loader.ts` 前，先读以下两份元指南：
+
+- `references/prompt-writing-guide.md` — 如何写好 agent prompt（描述正面设计 / 职责分离 / 通用化等元原则）
+- `references/harness-design-lessons.md` — harness 设计过程中踩过的坑（如「Agent 是运行时进程，不持久化」）
+
 ## License
 
 MIT
