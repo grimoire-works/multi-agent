@@ -32,9 +32,12 @@
 
 ### 正确做法
 
-**多轮讨论型 agent**（PM / Designer）：必须 `run_in_background: true` + `name` 启动，进入 idle 后用 `SendMessage(to: name)` 协作。
+**多轮讨论一律由主 Agent 承担**（2026-08-17 决策更新）：需求澄清由主 Agent 用 AskUserQuestion 直接跟用户收敛（可调 `/grill`），PM / Designer / Dev 均为同步一次性调用（产出 PRD / 设计稿 / 技术方案后进程结束）。不再使用「后台 idle + SendMessage 协作」模式，原因：
+- SendMessage 找不到目标是**静默失败**（见上表），流水线可能卡死
+- teammate 持续 idle 会累积上下文，后续修正时上下文不干净
+- 讨论收敛到主 Agent 后，agent 只做一次性产出，调用侧更简单
 
-**一次性任务型 agent**（dev / tester）：同步启动即可，每次需要时新开。
+**一次性任务型 agent**（dev / tester）：同步启动即可，每次需要时新开。修正循环也新开 Teammate（不复用首轮），保持上下文干净。
 
 **断点恢复**：agent 是运行时进程，handoff.md 恢复时不保存 agent 状态（无法恢复），只保存文件状态（任务进度 / pending_tests）。新会话需要 agent 时**主动重启**，让 agent 通过读文件（PRD / plan.md / 测试报告）恢复上下文。
 
