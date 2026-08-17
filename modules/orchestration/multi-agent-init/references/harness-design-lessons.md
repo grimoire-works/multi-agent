@@ -4,7 +4,7 @@
 >
 > ❌ **不进入 agent prompt**：这些是给 harness 维护者看的元教训，约束**如何设计 agent 协作系统**，不是约束 agent 本身。
 >
-> ✅ 当你修改 `templates/` / `src/core/prompt-loader.ts` / `install.sh` 等 harness 核心文件时，先读一遍这份文档。
+> ✅ 当你修改 `templates/` / `src/core/prompt-loader.ts` 等 harness 核心文件时，先读一遍这份文档。
 
 ---
 

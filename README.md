@@ -46,12 +46,6 @@ multi-agent-kit/
 │   ├── core/
 │   └── types/
 │
-├── adapters/                              # 各平台适配层
-│   ├── claude-code/
-│   ├── cursor/
-│   ├── trae/
-│   └── codex/
-│
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -101,13 +95,6 @@ node /path/to/multi-agent-kit/dist/index.js status
 cp -r modules/orchestration/multi-agent-init ~/.claude/skills/multi-agent-init
 ```
 
-或使用安装脚本：
-
-```bash
-cd adapters/claude-code
-bash install.sh
-```
-
 安装后在项目中说"初始化多智能体"或运行 `/multi-agent-init`。
 
 支持的完整功能：
@@ -115,24 +102,6 @@ bash install.sh
 - 流水线模式（测试后台 + 开发前台）
 - Agent Teams 并行模式（>10 个任务）
 - 修正循环（新开 agent + prompt 传报告路径衔接上下文）
-
-### 方式三：Cursor / Trae / Codex
-
-使用 CLI 初始化后，运行 setup 命令自动生成平台规则文件：
-
-```bash
-# init 完成后会询问是否生成，也可以单独运行：
-node /path/to/multi-agent-kit/dist/index.js setup
-# → 选择目标平台 → 自动替换占位符 → 生成到对应 rules 目录
-```
-
-生成后在对应平台的对话中说"按开发模式工作流程执行"即可使用。
-
-支持基础功能：
-- Agent 角色定义（dev/tester/...）
-- plan.md 任务管理 + 验收标准
-- lessons-learned 经验积累
-- tester AC 验证 + 代码质量审查
 
 ## Agent 角色说明
 
@@ -152,7 +121,6 @@ node /path/to/multi-agent-kit/dist/index.js setup
   ├─ 探测项目信息 → 确认/补充
   ├─ 选择 Agent 角色
   ├─ AI 扫描代码 → 生成 plan.md（含验收标准）
-  ├─ 可选：setup 生成平台规则文件
   │
 编排执行 (multi-agent-kit run)
   │
