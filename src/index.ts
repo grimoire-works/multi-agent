@@ -19,7 +19,7 @@ program
   $ multi-agent-kit status            # 查看当前进度
 
 文档:
-  https://github.com/xxx/multi-agent-kit
+  https://github.com/grimoire-works/multi-agent
 `);
 
 program
