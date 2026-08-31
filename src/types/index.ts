@@ -18,6 +18,8 @@ export interface ProjectConfig {
 
 export interface OrchestrationConfig {
   maxCorrectionRounds?: number;
+  /** Wave 并行模式：按文件冲突分组，Wave 内并行开发（默认 false 串行） */
+  parallel?: boolean;
   agentModel?: string;
   agentMaxTurns?: number;
   agentTimeoutMs?: number;

@@ -1,13 +1,9 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   replacePlaceholders,
   loadAgentPrompt,
   buildDevPrompt,
   buildTesterPrompt,
-  readLessonsLearned,
 } from '../src/core/prompt-loader.js';
 import type { ProjectConfig, Task } from '../src/types/index.js';
 
@@ -87,64 +83,3 @@ describe('buildTesterPrompt', () => {
   });
 });
 
-describe('readLessonsLearned', () => {
-  let dir: string;
-
-  beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mak-lessons-'));
-  });
-
-  afterEach(() => {
-    fs.rmSync(dir, { recursive: true, force: true });
-  });
-
-  it('文件不存在时返回空字符串', () => {
-    expect(readLessonsLearned(dir)).toBe('');
-  });
-
-  it('解析 v2 结构化格式（### EXP-NNN），压缩为标题+触发条件+原因+解法', () => {
-    fs.mkdirSync(path.join(dir, 'doc'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'doc', 'lessons-learned.md'), `# 经验教训库
-
-### EXP-001: 避免 ESM 中使用 require
-
-| 字段 | 值 |
-|------|-----|
-| 触发条件 | Vite 项目打包前 |
-| 置信度 | 0.3 |
-
-**原因**：ESM 打包器不转换 require
-
-**解法**：改用 import 语法
-`, 'utf-8');
-
-    const result = readLessonsLearned(dir);
-    expect(result).toContain('EXP-001: 避免 ESM 中使用 require');
-    expect(result).toContain('**原因**：ESM 打包器不转换 require');
-    expect(result).toContain('**解法**：改用 import 语法');
-    expect(result).not.toContain('置信度');
-  });
-
-  it('v2 格式取最近 5 条（新条目追加在文件末尾）', () => {
-    fs.mkdirSync(path.join(dir, 'doc'), { recursive: true });
-    const sections = Array.from({ length: 7 }, (_, i) =>
-      `### EXP-00${i + 1}: 经验 ${i + 1}\n\n**原因**：原因 ${i + 1}\n\n**解法**：解法 ${i + 1}\n`);
-    fs.writeFileSync(path.join(dir, 'doc', 'lessons-learned.md'), `# 经验教训库\n\n${sections.join('')}`, 'utf-8');
-
-    const result = readLessonsLearned(dir);
-    expect(result).not.toContain('EXP-001');
-    expect(result).not.toContain('EXP-002');
-    expect(result).toContain('EXP-003');
-    expect(result).toContain('EXP-007');
-  });
-
-  it('旧版列表格式兼容，取最后 5 条', () => {
-    fs.mkdirSync(path.join(dir, 'doc'), { recursive: true });
-    const lines = Array.from({ length: 8 }, (_, i) => `- [EXP-00${i + 1}] 经验 ${i + 1}`);
-    fs.writeFileSync(path.join(dir, 'doc', 'lessons-learned.md'), `# 经验教训库\n\n${lines.join('\n')}`, 'utf-8');
-
-    const result = readLessonsLearned(dir);
-    expect(result).not.toContain('[EXP-001]');
-    expect(result).toContain('[EXP-008]');
-  });
-});

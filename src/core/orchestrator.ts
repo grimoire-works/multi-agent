@@ -1,10 +1,12 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import type { ProjectConfig, Task, TestResult, TestVerdict } from '../types/index.js';
+import type { ProjectConfig, Task, TestVerdict } from '../types/index.js';
 import { StateManager } from './state-manager.js';
 import { AgentRunner } from './agent-runner.js';
-import { loadAgentPrompt, buildDevPrompt, buildTesterPrompt, buildCorrectionPrompt, buildRetestPrompt, readLessonsLearned } from './prompt-loader.js';
+import { loadAgentPrompt, buildDevPrompt, buildTesterPrompt, buildCorrectionPrompt, buildRetestPrompt } from './prompt-loader.js';
+import { buildLessonsInjection, logInjection } from './lessons.js';
+import { planWaves } from './waves.js';
 import { log, showProgress, showSpinner, showSummaryReport, formatTestVerdict } from './console.js';
 
 const DEFAULT_MAX_CORRECTION_ROUNDS = 3;
@@ -36,39 +38,116 @@ export class Orchestrator {
 
   async run(): Promise<void> {
     const runState = this.state.loadState();
-    const totalTasks = runState.tasks.filter(t => t.status === 'pending' || t.status === 'in_progress').length;
+    const pending = runState.tasks.filter(t => t.status === 'pending' || t.status === 'in_progress');
 
-    if (totalTasks === 0) {
+    if (pending.length === 0) {
       log.info('没有待执行的任务');
       return;
     }
 
-    log.info(`开始执行，共 ${totalTasks} 个待办任务`);
+    log.info(`开始执行，共 ${pending.length} 个待办任务`);
     console.log('');
 
-    let task: Task | null;
-    while ((task = this.state.getNextTask()) !== null) {
-      await this.executeTask(task);
+    if (this.config.orchestration?.parallel) {
+      await this.runWaves();
+    } else {
+      let task: Task | null;
+      while ((task = this.state.getNextTask()) !== null) {
+        await this.executeTask(task);
+      }
     }
 
     this.showFinalReport();
   }
 
+  // ── 串行模式：逐任务 开发 → 构建检查 → 测试 ──
+
   private async executeTask(task: Task): Promise<void> {
+    const devOk = await this.developTask(task);
+    if (!devOk) return;
+
+    if (this.config.buildCommand) {
+      const buildOk = await this.buildCheckWithFix(`任务 ${task.id}`);
+      if (!buildOk) {
+        this.state.updateTaskStatus(task.id, 'needs_human', 1);
+        return;
+      }
+    }
+
+    await this.testTask(task);
+  }
+
+  // ── 并行模式：Wave 内并行开发 → 构建检查 → 逐任务测试 ──
+
+  private async runWaves(): Promise<void> {
+    const runState = this.state.loadState();
+    const pending = runState.tasks.filter(t => t.status === 'pending' || t.status === 'in_progress');
+    const waves = planWaves(pending);
+
+    console.log('');
+    log.info(`并行模式：${pending.length} 个任务分为 ${waves.length} 个 Wave`);
+    waves.forEach((wave, i) => {
+      log.info(`  Wave ${i + 1}: 任务 ${wave.map(t => t.id).join(', ')}`);
+    });
+    console.log('');
+
+    for (const wave of waves) {
+      // 跳过已被改变状态的任务（如上一 Wave 失败连带）
+      const fresh = this.state.loadState();
+      const todo = wave.filter(t => {
+        const cur = fresh.tasks.find(x => x.id === t.id);
+        return cur && (cur.status === 'pending' || cur.status === 'in_progress');
+      });
+      if (todo.length === 0) continue;
+
+      console.log('');
+      log.step(`Wave 开始：任务 ${todo.map(t => t.id).join(', ')}`);
+
+      // Wave 内并行开发
+      const devResults = await Promise.all(todo.map(task => this.developTask(task)));
+      const devOkTasks = todo.filter((_, i) => devResults[i]);
+
+      if (devOkTasks.length === 0) {
+        log.warn('本 Wave 所有任务开发失败，跳过测试');
+        continue;
+      }
+
+      // 构建检查（失败则新开 dev agent 修复，修复失败整 Wave 转人工）
+      if (this.config.buildCommand) {
+        const buildOk = await this.buildCheckWithFix(`Wave（任务 ${devOkTasks.map(t => t.id).join(', ')}）`);
+        if (!buildOk) {
+          for (const task of devOkTasks) {
+            this.state.updateTaskStatus(task.id, 'needs_human', 1);
+          }
+          continue;
+        }
+      }
+
+      // 逐任务测试 + 修正循环（测试含上下文切换，串行执行）
+      for (const task of devOkTasks) {
+        await this.testTask(task);
+      }
+    }
+  }
+
+  // ── 任务阶段 ──
+
+  /** 开发阶段：标记进行中 → 分级经验注入 → dev agent 实现。返回是否成功 */
+  private async developTask(task: Task): Promise<boolean> {
     this.state.updateTaskStatus(task.id, 'in_progress');
     console.log('');
     log.step(`任务 ${task.id}: ${task.title}`);
     showProgress(0, 1, task.title);
 
-    // 1. 注入经验教训
-    const lessons = readLessonsLearned(this.config.projectPath);
+    // 分级经验注入（项目规则 > 高置信度 > 关键词匹配）+ 注入日志
+    const injection = buildLessonsInjection(this.config.projectPath, task);
+    logInjection(this.config.projectPath, injection.expIds, `任务 ${task.id}`);
 
-    // 2. 开发
     const devPrompt = loadAgentPrompt('dev', this.config);
     const devRunner = this.createRunner(devPrompt);
 
     const devSpinner = showSpinner(`开发中：任务 ${task.id}...`);
-    const devResult = await devRunner.run(buildDevPrompt(task, lessons));
+    const devResult = await devRunner.run(buildDevPrompt(task, injection.text));
     devSpinner.stop();
 
     this.state.addTokenUsage(devResult.inputTokens, devResult.outputTokens);
@@ -76,37 +155,46 @@ export class Orchestrator {
     if (!devResult.success) {
       log.error(`开发失败：${devResult.error}`);
       this.state.updateTaskStatus(task.id, 'needs_human', 1);
-      return;
+      return false;
     }
 
     log.success(`开发完成（tokens: ${(devResult.inputTokens + devResult.outputTokens) / 1000}k）`);
+    return true;
+  }
 
-    // 3. 快速验证（构建命令）
-    if (this.config.buildCommand) {
-      const buildOk = this.runBuildCheck();
-      if (!buildOk) {
-        log.warn('构建失败，尝试修复...');
-        // 简单修复：再跑一轮 dev agent
-        const fixResult = await devRunner.run(
-          `构建命令 ${this.config.buildCommand} 报错了，请修复构建错误。修复后运行构建命令确认。`
-        );
-        this.state.addTokenUsage(fixResult.inputTokens, fixResult.outputTokens);
-        if (!fixResult.success) {
-          log.error('自动修复失败');
-          this.state.updateTaskStatus(task.id, 'needs_human', 1);
-          return;
-        }
-      }
+  /** 构建检查：失败则新开 dev agent 修复一次。返回构建是否可用 */
+  private async buildCheckWithFix(context: string): Promise<boolean> {
+    if (!this.config.buildCommand) return true;
+
+    if (this.runBuildCheck()) return true;
+
+    log.warn(`构建失败（${context}），尝试修复...`);
+    const devPrompt = loadAgentPrompt('dev', this.config);
+    const fixRunner = this.createRunner(devPrompt);
+
+    const fixSpinner = showSpinner('修复构建错误...');
+    const fixResult = await fixRunner.run(
+      `构建命令 ${this.config.buildCommand} 报错了，请修复构建错误。修复后运行构建命令确认。`
+    );
+    fixSpinner.stop();
+
+    this.state.addTokenUsage(fixResult.inputTokens, fixResult.outputTokens);
+
+    if (!fixResult.success || !this.runBuildCheck()) {
+      log.error('自动修复失败');
+      return false;
     }
+    return true;
+  }
 
-    // 4. 测试（如果有 tester agent）
-    if (this.config.agents.includes('tester')) {
-      await this.runTestLoop(task);
-    } else {
-      // 无 tester，直接标记完成
+  /** 测试阶段：tester 验收 + 修正循环；无 tester 直接标记完成 */
+  private async testTask(task: Task): Promise<void> {
+    if (!this.config.agents.includes('tester')) {
       this.state.updateTaskStatus(task.id, 'completed', 1);
       log.success(`任务 ${task.id} 完成（无测试）`);
+      return;
     }
+    await this.runTestLoop(task);
   }
 
   private async runTestLoop(task: Task): Promise<void> {
@@ -147,7 +235,8 @@ export class Orchestrator {
       round++;
       attempts++;
 
-      const lessons = readLessonsLearned(this.config.projectPath);
+      const injection = buildLessonsInjection(this.config.projectPath, task);
+      logInjection(this.config.projectPath, injection.expIds, `任务 ${task.id} 修正第 ${round} 轮`);
 
       // 修正（引用上轮报告）
       log.step(`第 ${round} 轮修正...`);
@@ -156,7 +245,7 @@ export class Orchestrator {
 
       const fixSpinner = showSpinner(`修正中：第 ${round} 轮...`);
       const fixResult = await fixRunner.run(
-        buildCorrectionPrompt(task, reportRelPath, lessons, round)
+        buildCorrectionPrompt(task, reportRelPath, injection.text, round)
       );
       fixSpinner.stop();
 
