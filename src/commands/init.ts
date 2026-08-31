@@ -4,7 +4,7 @@ import inquirer from 'inquirer';
 import type { ProjectConfig, AgentRole } from '../types/index.js';
 import { log, showSpinner } from '../core/console.js';
 import { AgentRunner } from '../core/agent-runner.js';
-import { buildPlannerSystemPrompt, buildPlannerUserPrompt } from '../core/prompt-loader.js';
+import { buildPlannerSystemPrompt, buildPlannerUserPrompt, loadAgentPrompt, loadOrchestratorPrompt, loadPrinciples } from '../core/prompt-loader.js';
 
 // ── 项目探测 ──
 
@@ -134,12 +134,12 @@ function detectProject(cwd: string): DetectionResult {
     result.installCommand = 'pip install -r requirements.txt';
   }
 
-  // 代号
+  // 代号（非 ASCII 项目名如中文会被清空，兜底为 project）
   result.codename = result.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
-    .substring(0, 12);
+    .substring(0, 12) || 'project';
 
   return result;
 }
@@ -313,11 +313,14 @@ export async function initCommand(projectDir?: string): Promise<void> {
     log.success('已创建 doc/lessons-learned.md');
   }
 
-  // 写 main-log.md
+  // 写 main-log.md（追加，保留历史编排日志）
   const logPath = path.join(cwd, 'doc', 'main-log.md');
   const now = formatTime();
   const logLine = `- ${now} 项目启动，${config.name}\n`;
-  fs.writeFileSync(logPath, logLine, 'utf-8');
+  fs.appendFileSync(logPath, logLine, 'utf-8');
+
+  // 生成 .claude/ 产物：agent 定义 + 编排提示词 + 协作原则（使项目同时具备 Skill 路径可用性）
+  generateClaudeArtifacts(cwd, config);
 
   console.log('');
   log.success('初始化完成！');
@@ -332,6 +335,52 @@ export async function initCommand(projectDir?: string): Promise<void> {
 }
 
 // ── 辅助 ──
+
+/**
+ * 生成 .claude/ 产物（与 Skill 路径 init 的产出对齐）：
+ * - .claude/agents/{代号}-{role}.md     每个选中角色的 agent 定义
+ * - .claude/主智能体提示词.md            串行编排 prompt
+ * - .claude/主智能体提示词-teams.md      并行编排 prompt
+ * - .claude/rules/principles.md          通用协作原则 P-001~P-006
+ *
+ * 生成后项目内可直接用 Claude Code 说"走编排流程"（Skill 路径），也可继续用 CLI run。
+ */
+function generateClaudeArtifacts(cwd: string, config: ProjectConfig): void {
+  const agentsDir = path.join(cwd, '.claude', 'agents');
+  fs.mkdirSync(agentsDir, { recursive: true });
+
+  for (const role of config.agents) {
+    const target = path.join(agentsDir, `${config.codename}-${role}.md`);
+    try {
+      fs.writeFileSync(target, loadAgentPrompt(role, config), 'utf-8');
+    } catch (err: any) {
+      log.warn(`生成 ${config.codename}-${role}.md 失败：${err.message}`);
+    }
+  }
+  log.success(`已生成 .claude/agents/（${config.agents.length} 个角色）`);
+
+  // 编排提示词（串行 + teams）
+  try {
+    fs.writeFileSync(path.join(cwd, '.claude', '主智能体提示词.md'), loadOrchestratorPrompt('orchestrator', config), 'utf-8');
+    fs.writeFileSync(path.join(cwd, '.claude', '主智能体提示词-teams.md'), loadOrchestratorPrompt('orchestrator-teams', config), 'utf-8');
+    log.success('已生成 .claude/主智能体提示词.md（串行 + teams）');
+  } catch (err: any) {
+    log.warn(`生成编排提示词失败：${err.message}`);
+  }
+
+  // 协作原则
+  try {
+    const rulesDir = path.join(cwd, '.claude', 'rules');
+    fs.mkdirSync(rulesDir, { recursive: true });
+    const principlesPath = path.join(rulesDir, 'principles.md');
+    if (!fs.existsSync(principlesPath)) {
+      fs.writeFileSync(principlesPath, loadPrinciples(), 'utf-8');
+      log.success('已注入 .claude/rules/principles.md（P-001~P-006）');
+    }
+  } catch (err: any) {
+    log.warn(`注入协作原则失败：${err.message}`);
+  }
+}
 
 function checkSourceFiles(cwd: string): boolean {
   const sourcePatterns = [

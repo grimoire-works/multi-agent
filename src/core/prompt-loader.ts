@@ -5,6 +5,7 @@ import type { ProjectConfig, Task, AgentRole } from '../types/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_DIR = path.resolve(__dirname, '../../modules/orchestration/multi-agent-init/templates');
+const REFERENCES_DIR = path.resolve(__dirname, '../../modules/orchestration/multi-agent-init/references');
 
 /**
  * Agent prompt 文件名映射
@@ -42,6 +43,28 @@ export function replacePlaceholders(template: string, config: ProjectConfig): st
     .replace(/\{构建命令\}/g, config.buildCommand ?? '（未配置）')
     .replace(/\{依赖安装命令\}/g, config.installCommand ?? '（未配置）')
     .replace(/\{项目路径\}/g, config.projectPath);
+}
+
+/**
+ * 加载编排模板（orchestrator / orchestrator-teams）并替换配置占位符
+ */
+export function loadOrchestratorPrompt(variant: 'orchestrator' | 'orchestrator-teams', config: ProjectConfig): string {
+  const filepath = path.join(TEMPLATES_DIR, `${variant}.md`);
+  if (!fs.existsSync(filepath)) {
+    throw new Error(`编排模板不存在: ${filepath}`);
+  }
+  return replacePlaceholders(fs.readFileSync(filepath, 'utf-8'), config);
+}
+
+/**
+ * 加载通用协作原则（P-001 ~ P-006）原文，用于注入项目 .claude/rules/principles.md
+ */
+export function loadPrinciples(): string {
+  const filepath = path.join(REFERENCES_DIR, 'principles.md');
+  if (!fs.existsSync(filepath)) {
+    throw new Error(`原则文件不存在: ${filepath}`);
+  }
+  return fs.readFileSync(filepath, 'utf-8');
 }
 
 /**
@@ -172,33 +195,6 @@ export function buildRetestPrompt(task: Task, prevReportRelPath: string, reportR
     '',
     '请按测试工作流程执行。',
   ].join('\n');
-}
-
-/**
- * 读取 lessons-learned.md 内容（v2 结构化格式，取最近 5 条）
- */
-export function readLessonsLearned(projectDir: string): string {
-  const filePath = path.join(projectDir, 'doc', 'lessons-learned.md');
-  if (!fs.existsSync(filePath)) return '';
-
-  const content = fs.readFileSync(filePath, 'utf-8');
-
-  // v2 格式：`### EXP-NNN: 标题` 分段，新条目追加在文件末尾，取最后 5 条
-  const sections = content.split(/^###\s+(?=EXP-\d+)/m).filter(s => s.startsWith('EXP-'));
-  if (sections.length > 0) {
-    return sections.slice(-5).map(section => {
-      const lines = section.split('\n');
-      const header = lines[0].trim();
-      const trigger = lines.find(l => l.includes('触发条件'))?.trim();
-      const reason = lines.find(l => l.startsWith('**原因**'))?.trim();
-      const solution = lines.find(l => l.startsWith('**解法**'))?.trim();
-      return [header, trigger, reason, solution].filter(Boolean).join('\n');
-    }).join('\n\n');
-  }
-
-  // 旧版列表格式兼容：`- [xxx]` 行
-  const lines = content.split('\n').filter(l => l.startsWith('- ['));
-  return lines.slice(-5).join('\n');
 }
 
 /**
