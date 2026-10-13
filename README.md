@@ -76,6 +76,15 @@ multi-agent-kit/
 └── tests/                                 # vitest 单元测试（npm test）
 ```
 
+## 前置要求
+
+| 路径 | 需要准备 | 费用 |
+|---|---|---|
+| Claude Code Skill | Claude Code（桌面/CLI/IDE 均可） | 模型调用含在 Claude Code 订阅内 |
+| CLI 独立运行 | Node.js 18+、`ANTHROPIC_API_KEY` 环境变量 | 按 Anthropic API 用量计费 |
+
+两条路径都在**本地执行**（文件读写、构建、测试全在你自己的机器上），仅模型推理走云端 API，项目代码不出本机。
+
 ## 快速开始
 
 ### 方式一：Claude Code Skill（完整功能）
