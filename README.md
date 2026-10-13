@@ -180,7 +180,7 @@ node /path/to/multi-agent/dist/index.js status
 ```bash
 npm install
 npm run build    # tsc 编译到 dist/
-npm test         # vitest 单元测试（plan 解析/Wave 分组/经验注入/判定提取，模板契约已固化为测试）
+npm test         # vitest 单元测试（plan 解析/Wave 分组/经验注入/判定提取/Agent 工具命名契约，模板契约已固化为测试）
 ```
 
 ## License
