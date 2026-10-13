@@ -21,10 +21,19 @@ export interface AgentSessionOptions {
 }
 
 /**
+ * 全量工具名（导出供测试断言，防命名回归）
+ *
+ * 必须使用 SDK 注册名：全小写，且 Glob 在 SDK 中对应 find。
+ * createAgentSession 的 tools 参数按名字精确过滤（Set 匹配），
+ * 大小写或名称不匹配会导致工具全部被过滤、agent 零工具空转。
+ */
+export const ALL_TOOLS = ['read', 'bash', 'edit', 'write', 'find', 'grep'];
+
+/**
  * 简化版 PI Coding Agent 会话封装
  *
  * - 每次 run 创建新 session（不跨任务复用）
- * - 内置工具：Read, Write, Edit, Bash, Glob, Grep
+ * - 内置工具：read / bash / edit / write / find / grep（SDK 小写命名）
  * - 自动加载项目 CLAUDE.md
  */
 export class AgentRunner {
@@ -75,11 +84,10 @@ export class AgentRunner {
     } as Model<any>;
 
     // 创建 session
-    const tools = ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'];
     const result = await createAgentSession({
       cwd,
       model,
-      tools,
+      tools: ALL_TOOLS,
       customTools: [],
       authStorage,
       sessionManager: SessionManager.create(cwd),
